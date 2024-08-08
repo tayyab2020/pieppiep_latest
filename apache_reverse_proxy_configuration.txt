@@ -1,0 +1,12 @@
+ProxyPreserveHost On
+
+ProxyPass /socket.io/ http://185.220.174.123:3000/socket.io/
+ProxyPassReverse /socket.io/ http://185.220.174.123:3000/socket.io/
+
+ProxyPass /media/ http://185.220.174.123:3000/media/
+ProxyPassReverse /media/ http://185.220.174.123:3000/media/
+
+RewriteEngine On
+RewriteCond %{HTTP:Connection} Upgrade [NC]
+RewriteCond %{HTTP:Upgrade} websocket [NC]
+RewriteRule /(.*) ws://185.220.174.123:3000/$1 [P,L]
