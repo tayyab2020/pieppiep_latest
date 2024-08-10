@@ -1404,10 +1404,10 @@ class UserController extends Controller
 
             })
 
-            ->addColumn('customer_name', function ($key) use ($user) {
+            /* ->addColumn('customer_name', function ($key) use ($user) {
                 $customer_name = $key->quote_request_id ? ($key->paid ? $key->quote_name . ' ' . $key->quote_familyname : 'vloerofferte.nl') : $key->name . ' ' . $key->family_name;
                 return $customer_name;
-            })
+            }) */
             ->addColumn('grand_total', function ($key) use ($user) {
                 return "€ " . number_format((float)$key->grand_total, 2, ',', '.');
             })

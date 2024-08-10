@@ -1588,13 +1588,13 @@
             $(this).parent().find('.delete_quotations_options').val(isChecked ? 1 : 0);
         });
 
-        /*$.fn.datepicker.dates['du'] = {
+        $.fn.datepicker.dates['du'] = {
             days: ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"],
             daysShort: ["zo", "ma", "di", "wo", "do", "vr", "za"],
             daysMin: ["zo", "ma", "di", "wo", "do", "vr", "za"],
             months: ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
             monthsShort: ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
-        };*/
+        };
 
         $('#filter_date').datepicker({
             format: 'mm-yyyy',
