@@ -1521,22 +1521,19 @@
 @endsection
 @section('scripts')
     @include("user.modals_js")
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-        <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
-        <script src="https://cdn.datatables.net/rowgroup/1.3.0/js/dataTables.rowGroup.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
-
-        {{-- <script src="https://cdn.datatables.net/responsive/2.2.3/js/responsive.bootstrap4.min.js"></script>
-        <link rel="https://cdn.datatables.net/rowgroup/1.1.1/css/rowGroup.bootstrap4.min.css" /> --}}
+    <script src="https://cdn.datatables.net/rowgroup/1.3.0/js/dataTables.rowGroup.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript">
         (function($) {
-            $('.export_dates').datepicker({
-                format: 'yyyy-mm-dd',
-                language: 'du',
-                ignoreReadonly: true
-            });
-
+            if ($.fn.datepicker) {
+                $('.export_dates').datepicker({
+                    format: 'yyyy-mm-dd',
+                    language: 'du',
+                    ignoreReadonly: true
+                });
+            } else {
+                console.error('Datepicker plugin is not loaded. 1');
+            }
             // Simplified event binding
             ['#option1-1', '#option1-2', '#option1-3'].forEach(function(selector) {
                 $(selector).on('click', function() {
@@ -1588,13 +1585,7 @@
             $(this).parent().find('.delete_quotations_options').val(isChecked ? 1 : 0);
         });
 
-        $.fn.datepicker.dates['du'] = {
-            days: ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"],
-            daysShort: ["zo", "ma", "di", "wo", "do", "vr", "za"],
-            daysMin: ["zo", "ma", "di", "wo", "do", "vr", "za"],
-            months: ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
-            monthsShort: ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
-        };
+
 
         $('#filter_date').datepicker({
             format: 'mm-yyyy',
@@ -1602,6 +1593,18 @@
             startView: "months",
             minViewMode: "months",
         });
+
+        if ($.fn.datepicker && $.fn.datepicker.dates) {
+            $.fn.datepicker.dates['du'] = {
+                days: ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"],
+                daysShort: ["zo", "ma", "di", "wo", "do", "vr", "za"],
+                daysMin: ["zo", "ma", "di", "wo", "do", "vr", "za"],
+                months: ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
+                monthsShort: ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
+            };
+        } else {
+            console.error('Datepicker plugin is not loaded.');
+        }
 
         function ask(e) {
             var text = $(e).data('text');
@@ -1650,16 +1653,42 @@
     @endif
 
     @if (Auth::check())
+
         <script>
             $(document).ready(function() {
-                $('#example').DataTable({
+                var screen_width = $(window).width();
+                var tableId = 'example';
+                var table;
+                table = $('#' + tableId).DataTable({
                     processing: true,
-                    serverSide: true,
                     responsive: false,
-                    ajax: "{{ route('customer-quotations') }}",
-                    dataSrc: function (json) {
-                        console.log(json); // Inspect the full data here
-                        return json.data;
+                    rowReorder: {
+                        selector: 'td:nth-child(2)'
+                    },
+                    order: [ [1, 'desc'] ],
+                    serverSide: true,
+                    ajax: function(data, callback, settings) {
+                        // Collect filter values
+                        var filters = {
+                            year: $('.filter_year').val(),
+                            month: $('.filter_month').val(),
+                            status: $('.filter_status').val()
+                        };
+
+                        $.ajax({
+                            url: "{{ route('customer-quotations') }}",
+                            dataType: "json",
+                            data: $.extend(data, filters),
+                            success: function(response) {
+                                console.log('Server response:', response);
+                                callback({
+                                    draw: data.draw,
+                                    recordsTotal: response.recordsTotal,
+                                    recordsFiltered: response.recordsFiltered,
+                                    data: response.data
+                                });
+                            }
+                        });
                     },
                     columns: [
                         { data: 'document_number', name: 'document_number' },
@@ -1681,6 +1710,51 @@
                         { data: 'action', name: 'action', orderable: false, searchable: false },
                     ]
                 });
+                $('.filter_year, .filter_month, .filter_status').on('change', function() {
+                    table.ajax.reload();
+                    // filter();
+                });
+
+
+                // function filter(page_load = 0) {
+                //     $.fn.dataTable.ext.search.push(
+                //         function(settings, data, dataIndex) {
+                //             var filter_status = $(".filter_status").val();
+                //             var all_status_elements = data[table.column('all_status_elements:name').index()];
+
+                //             var status_match = true;
+
+                //             if (filter_status) {
+                //                 var status_elements = all_status_elements.split('<br>');
+                //                 status_match = status_elements.some(function(element) {
+                //                     return element.includes(filter_status);
+                //                 });
+                //             }
+
+                //             return status_match;
+                //         }
+                //     );
+
+                //     var filter_text = $("#filter_text").val();
+                //     table.search(filter_text).draw();
+
+                //     if (!page_load) {
+                //         var filter_month = $(".filter_month").val();
+                //         var filter_year = $(".filter_year").val();
+                //         var filter_status = $(".filter_status").val();
+
+                //         $.ajax({
+                //             type: "GET",
+                //             data: "filter_text=" + filter_text + "&filter_month=" + filter_month + '&filter_year=' + filter_year + '&filter_status=' + filter_status + '&type=1',
+                //             url: "{{ route('user-update-filter') }}",
+                //             success: function(data) {
+                //                 console.log('data', data);
+
+                //             },
+                //             error: function(data) {}
+                //         });
+                //     }
+                // }
             });
         </script>
     @endif
