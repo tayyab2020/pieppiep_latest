@@ -101,17 +101,17 @@
                                                         {{-- <tbody>
                                                             @foreach($invoices as $i => $key)
                                                                 @php
-                                                                    $date = strtotime($key->invoice_date);
+                                                                    $date = strtotime($key->invoice_date); 
                                                                     $date1 = date('d-m-Y',$date);
                                                                 @endphp
                                                                 @if($key->getTable() == 'custom_quotations')
                                                                 <tr role="row" class="odd">
                                                                     <td data-sort="{{$date}}">
                                                                         <a href="{{ url('/aanbieder/bekijk-eigen-offerte/'.$key->invoice_id) }}">
-                                                                            @if(Auth::guard('user')->user()->role_id == 4)
-                                                                                OR# {{$key->order_number}}
-                                                                            @else
-                                                                                OF# {{$key->quotation_invoice_number}}
+                                                                            @if(Auth::guard('user')->user()->role_id == 4) 
+                                                                                OR# {{$key->order_number}} 
+                                                                            @else 
+                                                                                OF# {{$key->quotation_invoice_number}} 
                                                                             @endif
                                                                         </a>
                                                                     </td>
@@ -534,7 +534,7 @@
                                                                 @endif
                                                             @endforeach
                                                         </tbody> --}}
-                                                        {{-- @if(Auth::guard('user')->user()->role_id == 2)
+                                                        @if(Auth::guard('user')->user()->role_id == 2)
                                                             <tfoot>
                                                                 <tr>
                                                                     <th></th>
@@ -549,9 +549,8 @@
                                                                     <th></th>
                                                                 </tr>
                                                             </tfoot>
-                                                        @endif --}}
+                                                        @endif
                                                     </table>
-                                                    {{-- {{ Auth::user()->role_id }} --}}
                                                 </form>
                                             </div>
                                         </div>
@@ -1521,14 +1520,6 @@
 @endsection
 @section('scripts')
     @include("user.modals_js")
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-        <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
-        <script src="https://cdn.datatables.net/rowgroup/1.3.0/js/dataTables.rowGroup.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
-
-        {{-- <script src="https://cdn.datatables.net/responsive/2.2.3/js/responsive.bootstrap4.min.js"></script>
-        <link rel="https://cdn.datatables.net/rowgroup/1.1.1/css/rowGroup.bootstrap4.min.css" /> --}}
     <script type="text/javascript">
         (function($) {
             $('.export_dates').datepicker({
@@ -1588,13 +1579,13 @@
             $(this).parent().find('.delete_quotations_options').val(isChecked ? 1 : 0);
         });
 
-        /*$.fn.datepicker.dates['du'] = {
+        $.fn.datepicker.dates['du'] = {
             days: ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"],
             daysShort: ["zo", "ma", "di", "wo", "do", "vr", "za"],
             daysMin: ["zo", "ma", "di", "wo", "do", "vr", "za"],
             months: ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
             monthsShort: ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"],
-        };*/
+        };
 
         $('#filter_date').datepicker({
             format: 'mm-yyyy',
@@ -1610,6 +1601,9 @@
         }
     </script>
     @if(Auth::guard('user')->user()->role_id == 2)
+        <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+        <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
+        <script src="https://cdn.datatables.net/rowgroup/1.3.0/js/dataTables.rowGroup.min.js"></script>
         <script>
             $(".accept-btn").on('click', function () {
                 var href = $(this).data("href");
@@ -1646,10 +1640,284 @@
 					}
 				});
             });
-        </script>
-    @endif
 
-    @if (Auth::check())
+            /* $(document).ready( function () {
+                var screen_width = $(window).width();
+                var userColumnDefs = [];
+                var table_width = "";
+                var tableId = 'example';
+                var dateColumn = 5;
+                var statusColumn = 7;
+                var orderStatusColumn = 8;
+                var amountColumn = 2;
+                var paidColumn = 3;
+                var table = $('#' + tableId).DataTable({
+                    order: [[dateColumn, 'desc']],
+                    language: {
+                        decimal: ',',
+                        thousands: '.',
+                        "sLengthMenu": "<?php echo __('text.Show') . ' _MENU_ ' . __('text.records'); ?>",
+                        "sSearch": "<?php echo __('text.Search') . ':' ?>",
+                        "sInfo": "<?php echo __('text.Showing') . ' _START_ ' . __('text.to') . ' _END_ ' . __('text.of') . ' _TOTAL_ ' . __('text.items'); ?>",
+                        "sInfoEmpty": "<?php echo __('text.No data available in table'); ?>",
+                        "sZeroRecords": "<?php echo __('text.No data available in table'); ?>",
+                        "sInfoFiltered": "<?php echo '- ' . __('text.filtered from') . ' _MAX_ ' . __('text.records'); ?>",
+                        "oPaginate": {
+                            "sPrevious": "<?php echo __('text.Previous'); ?>",
+                            "sNext": "<?php echo __('text.Next'); ?>"
+                        },
+                        "sEmptyTable": '<?php echo __('text.No data available in table'); ?>'
+                    },
+                    columnDefs: [{ 'visible': false, 'targets': [dateColumn,statusColumn,orderStatusColumn] }],
+                    rowGroup: {
+                        endRender: function ( rows, group ) {
+                            var sum = rows
+                            .data()
+                            .pluck(amountColumn)
+                            .reduce( function (a, b) {
+                                b = b.replace(/[\€.]/g, '');
+                                b = b.replace(/\,/g, '.') * 1;
+                                return a + b;
+                            }, 0);
+
+                            sum = sum.toFixed(2);
+                            sum = new Intl.NumberFormat('nl-NL',{minimumFractionDigits: 2,maximumFractionDigits: 2}).format(sum);
+
+                            var sum1 = rows
+                            .data()
+                            .pluck(paidColumn)
+                            .reduce( function (a, b) {
+                                b = b.replace(/[\€.]/g, '');
+                                b = b.replace(/\,/g, '.') * 1;
+                                return a + b;
+                            }, 0);
+
+                            sum1 = sum1.toFixed(2);
+                            sum1 = new Intl.NumberFormat('nl-NL',{minimumFractionDigits: 2,maximumFractionDigits: 2}).format(sum1);
+                            return $('<tr class="group-total" />').append( '<td colspan="2"></td><td style="color: #0097bd;">€ '+ sum +'</td><td style="color: #0097bd;" colspan="4">€ '+ sum1 +'</td>' );
+                        },
+                        dataSrc: function(row) {
+                            return row[dateColumn].display;
+                        }
+                    },
+                    autoWidth: false,
+                    responsive: false,
+                    scrollX: true,
+                    pageLength: 100,
+                    aLengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'ALL']],
+                    stateSave: true,
+                    initComplete: function (settings) {
+                        $('#' + tableId + '_wrapper thead th').resizable({
+                            handles: 'e',
+                            alsoResize: '#' + tableId + '_wrapper .dataTables_scrollHead table', //Not essential but makes the resizing smoother
+                            start: function (e) {
+                                document.querySelectorAll('th').forEach(target => {
+                                    target.addEventListener("click", preventOrdering, true);
+                                });
+                                $('#' + tableId + '_wrapper .dataTables_scrollHead table').on('mouseup', preventOrdering);
+                            },
+                            stop: function(e, ui) {
+                                document.querySelectorAll('th').forEach(target => {
+                                    target.removeEventListener("click", preventOrdering, true);
+                                });
+                                $('#' + tableId + '_wrapper .dataTables_scrollHead table').off('mouseup', preventOrdering);
+                                var table_width = $('#' + tableId + '_wrapper .dataTables_scrollHead table').width();
+                                $('#' + tableId + '_wrapper .dataTables_scrollBody table').width(table_width);
+                                $('#' + tableId + '_wrapper .dataTables_scrollFoot table').width(table_width);
+                                var index = $(this).index();
+                                $(this).width(ui.size.width);
+                                $('#' + tableId + '_wrapper .dataTables_scrollBody thead th').eq(index).width(ui.size.width);
+                                $('#' + tableId + '_wrapper .dataTables_scrollFoot tfoot th').eq(index).width(ui.size.width);
+                                saveColumnSettings();
+                            }
+                        });
+                    },
+
+                    footerCallback: function (row, data, start, end, display) {
+                        var api = this.api();
+                        var intVal = function (i) {
+                            if(typeof i == 'string') {
+                                i = i.replace(/[\€.]/g, '');
+                                i = i.replace(/\,/g, '.') * 1;
+                            } else if(typeof i != 'number') {
+                                i = 0;
+                            }
+                            i = parseFloat(i.toFixed(2));
+                            return i;
+                        };
+
+                        var pageTotal = 0;
+                        api
+                        .column(amountColumn, { page: 'current' })
+                        .data()
+                        .reduce(function (a, b) {
+                            pageTotal = pageTotal + intVal(b);
+                        }, 0);
+
+                        pageTotal = pageTotal.toFixed(2);
+                        pageTotal = new Intl.NumberFormat('nl-NL',{minimumFractionDigits: 2,maximumFractionDigits: 2}).format(pageTotal);
+
+                        var pageTotal1 = 0;
+                        api
+                        .column(paidColumn, { page: 'current' })
+                        .data()
+                        .reduce(function (a, b) {
+                            pageTotal1 = pageTotal1 + intVal(b);
+                        }, 0);
+
+                        pageTotal1 = pageTotal1.toFixed(2);
+                        pageTotal1 = new Intl.NumberFormat('nl-NL',{minimumFractionDigits: 2,maximumFractionDigits: 2}).format(pageTotal1);
+
+                        // Update footer
+                        $(api.column(amountColumn).footer()).html('€ ' + pageTotal);
+                        $(api.column(paidColumn).footer()).html('€ ' + pageTotal1);
+                    },
+                });
+
+                function preventOrdering(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                }
+
+                function getTableWidth() {
+                    $.ajax({
+                        type: "GET",
+                        data: "screen_width=" + screen_width + '&table_id=quotations',
+                        url: "<?php echo route('get-table-widths'); ?>",
+                        success: function (data) {
+                            if(data) {
+                                userColumnDefs = JSON.parse(data.column_defs);
+                                table_width = data.table_width;
+                            }
+                            setUserColumnsDefWidths();
+                        },
+                        error: function (data) {
+                        }
+                    });
+                }
+
+                function setUserColumnsDefWidths() {
+                    if (userColumnDefs.length === 0) return;
+                    $('#' + tableId + '_wrapper .dataTables_scrollHead table thead tr').find("th").each( function ( target ) {
+                        existingSetting = userColumnDefs.findIndex( function(column) { return column.targets === target; } );
+                        if ( existingSetting !== -1 ) {
+                            var index = $(this).index();
+                            $(this).width(userColumnDefs[existingSetting].width);
+                            $('#' + tableId + '_wrapper .dataTables_scrollBody thead th').eq(index).width(userColumnDefs[existingSetting].width);
+                            $('#' + tableId + '_wrapper .dataTables_scrollFoot tfoot th').eq(index).width(userColumnDefs[existingSetting].width);
+						}
+					});
+                    $('#' + tableId + '_wrapper table').width(table_width);
+				}
+				function saveColumnSettings() {
+					// var userColumnDefs = JSON.parse(localStorage.getItem("quotations_table")) || [];
+					var width, header, existingSetting;
+					$('#' + tableId + '_wrapper .dataTables_scrollHead table thead tr').find("th").each( function ( targets ) {
+						existingSetting = userColumnDefs.findIndex(function(column) { return column.targets === targets; });
+                        table_width = $('#' + tableId + '_wrapper .dataTables_scrollHead table').width();
+						width = $(this).width();
+						if ( existingSetting !== -1 ) {
+							userColumnDefs[existingSetting].width = width;
+						} else {
+							userColumnDefs.push({
+								targets: targets,
+								width:  width,
+							});
+						}
+					});
+                    var token = $("#token").val();
+                    $.ajax({
+                        type: "POST",
+                        data: "table_width=" + table_width + "&column_defs=" + JSON.stringify(userColumnDefs) + "&screen_width=" + screen_width + '&table_id=quotations' + "&_token=" + token,
+                        url: "<?php echo route('update-table-widths'); ?>",
+                        success: function (data) {
+                        },
+                        error: function (data) {
+                        }
+                    });
+					// Save (or update) the settings in localStorage
+					localStorage.setItem('quotations_table_width', table_width);
+                    localStorage.setItem("quotations_table", JSON.stringify(userColumnDefs));
+				}
+
+                var filters_row = $(".filters_row").html();
+                $(".dataTables_wrapper").find('.row').first().after('<div style="display: flex;margin: 20px 0 0 0;" class="row filters_row1">'+filters_row+'</div>');
+                $(".filters_row").remove();
+
+                function filter(page_load = 0) {
+                    // Custom filtering function which will search data in column five between two values
+                    $.fn.dataTable.ext.search.push(
+                        function( settings, data, dataIndex ) {
+                            var filter_status = $(".filter_status").val();
+                            var filter_month = $(".filter_month").val();
+                            var filter_year = $(".filter_year").val();
+                            var dateAr = /(\d+)\-(\d+)\-(\d+)/.exec(data[dateColumn]);
+                            var format_start = dateAr[3] + '-' + dateAr[2] + '-' + dateAr[1];
+                            var date = new Date(format_start);
+                            var day = date.getDate();
+                            var month = date.getMonth() + 1;
+                            var year = date.getFullYear().toString();
+                            var status = data[statusColumn];
+                            var order_status = data[orderStatusColumn];
+
+                            month = month > 9 ? "" + month : "0" + month;
+
+                            if (((filter_year == "" && filter_month == "") || ( (filter_year && filter_month) && (filter_year == year && filter_month == month) ) || ( ((filter_year && filter_month == "") && (filter_year == year)) || ((filter_month && filter_year == "") && (filter_month == month)) )) && ((filter_status == "") || ((filter_status == status) || (filter_status == order_status))))
+                            {
+                                return true;
+                            }
+                            else{
+                                return false;
+                            }
+
+                        }
+
+                    );
+
+                    var filter_text = $("#filter_text").val();
+                    table.search(filter_text).draw();
+
+                    if(!page_load)
+                    {
+                        var filter_month = $(".filter_month").val();
+                        var filter_year = $(".filter_year").val();
+                        var filter_status = $(".filter_status").val();
+
+                        $.ajax({
+
+                            type: "GET",
+                            data: "filter_text=" + filter_text + "&filter_month=" + filter_month + '&filter_year=' + filter_year + '&filter_status=' + filter_status + '&type=1',
+                            url: "<?php echo route('user-update-filter'); ?>",
+                            success: function (data) {},
+                            error: function (data) {}
+                        });
+                    }
+                }
+
+                table.on('draw', function () {
+                    getTableWidth();
+                });
+
+                $('.dataTables_filter input').on('input', function () {
+                    var value = $(this).val();
+                    $("#filter_text").val(value);
+                    filter();
+                });
+
+                $('.filter_month, .filter_year, .filter_status').on('change', function () {
+                    filter();
+                });
+
+                $(window).on("load", function () {
+                    filter(1);
+                });
+
+            }); */
+        </script>
+       
+        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
         <script>
             $(document).ready(function() {
                 $('#example').DataTable({
@@ -1657,32 +1925,64 @@
                     serverSide: true,
                     responsive: false,
                     ajax: "{{ route('customer-quotations') }}",
-                    dataSrc: function (json) {
-                        console.log(json); // Inspect the full data here
-                        return json.data;
-                    },
                     columns: [
+                        
                         { data: 'document_number', name: 'document_number' },
-                        @if (Auth::guard('user')->user()->role_id == 4)
-                            { data: 'company_name', name: 'company_name' },
-                        @else
-                            { data: 'customer_name', name: 'customer_name' },
-                        @endif
-
-                        @if(Auth::guard('user')->user()->role_id == 2)
+                        { data: 'customer_name', name: 'customer_name' },
                         { data: 'grand_total', name: 'grand_total' },
                         { data: 'paid', name: 'paid' },
-                        @endif
                         { data: 'all_status_elements', name: 'all_status_elements' },
                         { data: 'date1', name: 'date1' },
-                        @if(Auth::guard('user')->user()->role_id == 2)
                         { data: 'regards', name: 'regards' },
-                        @endif
                         { data: 'action', name: 'action', orderable: false, searchable: false },
                     ]
                 });
             });
         </script>
+        
+    @else
+        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+        <script>
+            $(document).ready(function() {
+                $('#example').DataTable({
+                    processing: true,
+                    serverSide: true,
+                    responsive: false,
+                    ajax: "{{ route('customer-quotations') }}",
+                    columns: [
+                        { data: 'document_number', name: 'document_number' },
+                        { data: 'company_name', name: 'company_name' },
+                        { data: 'all_status_elements', name: 'all_status_elements' },
+                        { data: 'date1', name: 'date1' },
+                        { data: 'action', name: 'action', orderable: false, searchable: false },
+                    ]
+                });
+            });
+            /*$('#example').DataTable({
+                order: [[3, 'desc']],
+                autoWidth: false,
+                pageLength: 100,
+                aLengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'ALL']],
+                language: {
+                    decimal: ',',
+                    thousands: '.',
+                    "sLengthMenu": "<?php echo __('text.Show') . ' _MENU_ ' . __('text.records'); ?>",
+                    "sSearch": "<?php echo __('text.Search') . ':' ?>",
+                    "sInfo": "<?php echo __('text.Showing') . ' _START_ ' . __('text.to') . ' _END_ ' . __('text.of') . ' _TOTAL_ ' . __('text.items'); ?>",
+                    "sInfoEmpty": "<?php echo __('text.No data available in table'); ?>",
+                    "sZeroRecords": "<?php echo __('text.No data available in table'); ?>",
+                    "sInfoFiltered": "<?php echo '- ' . __('text.filtered from') . ' _MAX_ ' . __('text.records'); ?>",
+                    "oPaginate": {
+                        "sPrevious": "<?php echo __('text.Previous'); ?>",
+                        "sNext": "<?php echo __('text.Next'); ?>"
+                    },
+                    "sEmptyTable": '<?php echo __('text.No data available in table'); ?>'
+                }
+            });*/
+
+        </script>
+
     @endif
 
 @endsection

@@ -6,7 +6,9 @@ use Closure;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Auth;
 use App\EmailSetting;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 
 class SetUserMailConfig
 {
@@ -26,7 +28,15 @@ class SetUserMailConfig
 
                 if ($emailSettings) {
                     // Override the mail configuration
-                    $emailSettings->password = Crypt::decryptString($emailSettings->password);
+                    try {
+                        $emailSettings->password = Crypt::decryptString($emailSettings->password);
+                    } catch (DecryptException $e) {
+                        Log::error('Decryption failed for email settings: ' . $e->getMessage());
+                        // Optionally, return a default response or fail gracefully
+                        return $next($request);
+                    }
+                    
+                    // $emailSettings->password = Crypt::decryptString($emailSettings->password);
             
                     config([
                         'mail.driver' => 'smtp',
