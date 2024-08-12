@@ -92,466 +92,11 @@
                                                                 <th class="sorting" tabindex="0" aria-controls="product-table_wrapper" rowspan="1" colspan="1" aria-label="Blood Group: activate to sort column ascending">{{__('text.Date')}}</th>
                                                                 @if(Auth::guard('user')->user()->role_id == 2)
                                                                     <th class="sorting" tabindex="0" aria-controls="product-table_wrapper" rowspan="1" colspan="1" aria-label="Blood Group: activate to sort column ascending">{{__('text.Regards')}}</th>
-                                                                    {{-- <th class="sorting" tabindex="0" aria-controls="product-table_wrapper" rowspan="1" colspan="1" aria-label="Blood Group: activate to sort column ascending"></th>
-                                                                    <th class="sorting" tabindex="0" aria-controls="product-table_wrapper" rowspan="1" colspan="1" aria-label="Blood Group: activate to sort column ascending"></th> --}}
                                                                 @endif
                                                                 <th class="sorting" tabindex="0" aria-controls="product-table_wrapper" rowspan="1" colspan="1" aria-label="Blood Group: activate to sort column ascending">{{__('text.Action')}}</th>
                                                             </tr>
                                                         </thead>
-                                                        {{-- <tbody>
-                                                            @foreach($invoices as $i => $key)
-                                                                @php
-                                                                    $date = strtotime($key->invoice_date);
-                                                                    $date1 = date('d-m-Y',$date);
-                                                                @endphp
-                                                                @if($key->getTable() == 'custom_quotations')
-                                                                <tr role="row" class="odd">
-                                                                    <td data-sort="{{$date}}">
-                                                                        <a href="{{ url('/aanbieder/bekijk-eigen-offerte/'.$key->invoice_id) }}">
-                                                                            @if(Auth::guard('user')->user()->role_id == 4)
-                                                                                OR# {{$key->order_number}}
-                                                                            @else
-                                                                                OF# {{$key->quotation_invoice_number}}
-                                                                            @endif
-                                                                        </a>
-                                                                    </td>
-                                                                    <td>{{ $key->name }} {{ $key->family_name }}</td>
-                                                                    @if(Auth::guard('user')->user()->role_id == 2)
-                                                                        <td>€ {{number_format((float)$key->grand_total, 2, ',', '.')}}</td>
-                                                                        <td></td>
-                                                                    @endif
-                                                                    <td>
-                                                                        @if($key->status == 3)
-                                                                            @if($key->received)
-                                                                                <span class="btn btn-success">{{__('text.Goods Received')}}</span>
-                                                                            @elseif($key->delivered)
-                                                                                <span class="btn btn-success">{{__('text.Goods Delivered')}}</span>
-                                                                            @else
-                                                                                <span class="btn btn-success">{{__('text.Invoice Generated')}}</span>
-                                                                            @endif
-                                                                        @elseif($key->status == 2)
-                                                                            @if($key->accepted)
-                                                                                <span class="btn btn-primary1">{{__('text.Quotation Accepted')}}</span>
-                                                                            @else
-                                                                                <span class="btn btn-success">{{__('text.Closed')}}</span>
-                                                                            @endif
-                                                                        @else
-                                                                            @if($key->ask_customization)
-                                                                                <span class="btn btn-info">{{__('text.Asking for Review')}}</span>
-                                                                            @elseif($key->approved)
-                                                                                <span class="btn btn-success">{{__('text.Quotation Approved')}}</span>
-                                                                            @else
-                                                                                <span class="btn btn-warning">{{__('text.Pending')}}</span>
-                                                                            @endif
-                                                                        @endif
-                                                                    </td>
-                                                                    <td data-sort="{{$date}}">{{$date1}}</td>
-                                                                    @if(Auth::guard('user')->user()->role_id == 2)
-                                                                        <td></td>
-                                                                        <td></td>
-                                                                        <td></td>
-                                                                    @endif
-                                                                    <td>
-                                                                        <div class="dropdown dropdown1">
-                                                                            <button style="outline: none;" class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">{{__('text.Action')}}
-                                                                                <span class="caret"></span></button>
-                                                                            <ul class="dropdown-menu">
-                                                                                @if(auth()->user()->can('view-custom-quotation'))
-                                                                                    <li><a href="{{ url('/aanbieder/bekijk-eigen-offerte/'.$key->invoice_id) }}">{{__('text.View')}}</a></li>
-                                                                                @endif
-                                                                                @if(auth()->user()->can('download-custom-quotation'))
-                                                                                    <li><a href="{{ url('/aanbieder/download-custom-quotation/'.$key->invoice_id) }}">{{__('text.Download PDF')}}</a></li>
-                                                                                @endif
-                                                                                @if(!$key->approved)
-                                                                                    @if(auth()->user()->can('send-custom-quotation'))
-                                                                                        <li><a href="{{ url('/aanbieder/versturen-eigen-offerte/'.$key->invoice_id) }}">{{__('text.Send Quotation')}}</a></li>
-                                                                                    @endif
-                                                                                @endif
-                                                                                @if($key->status == 2 && $key->accepted)
-                                                                                    @if(auth()->user()->can('create-custom-invoice'))
-                                                                                        <li><a href="{{ url('/aanbieder/opstellen-eigen-factuur/'.$key->invoice_id) }}">{{__('text.Create Invoice')}}</a></li>
-                                                                                    @endif
-                                                                                @endif
-                                                                                @if($key->status != 2 && $key->status != 3)
-                                                                                    @if($key->ask_customization)
-                                                                                        <li><a onclick="ask(this)" data-text="{{$key->review_text}}" href="javascript:void(0)">{{__('text.Review Reason')}}</a></li>
-                                                                                    @endif
-                                                                                    @if(auth()->user()->can('edit-custom-quotation'))
-                                                                                        <li><a href="{{ url('/aanbieder/bewerk-eigen-offerte/'.$key->invoice_id) }}">{{__('text.Edit Quotation')}}</a></li>
-                                                                                    @endif
-                                                                                @endif
-                                                                                @if($key->status == 3 && $key->delivered == 0)
-                                                                                    @if(auth()->user()->can('custom-mark-delivered'))
-                                                                                        <li><a href="{{ url('/aanbieder/custom-mark-delivered/'.$key->invoice_id) }}">{{__('text.Mark as delivered')}}</a></li>
-                                                                                    @endif
-                                                                                @endif
-                                                                            </ul>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                                @else
-                                                                <tr role="row" class="odd">
-                                                                    <td data-sort="{{$date}}">
-                                                                        @if(Auth::guard('user')->user()->role_id == 4)
-                                                                            <a href="">OR# {{$key->order_number}}</a>
-                                                                        @else
-                                                                            <div style="display: flex;align-items: center;" class="custom-control custom-checkbox mb-3">
-                                                                                <input type="checkbox" style="margin: 0;" class="custom-control-input" id="customCheck{{$i}}">
-                                                                                <input type="hidden" name="quotation_ids[]" class="quotation_ids" value="{{$key->invoice_id}}">
-                                                                                <input type="hidden" class="delete_quotations_options" name="delete_quotations_options[]">
-                                                                                <label style="margin: 0 0 0 5px;font-weight: 500;" class="custom-control-label" for="customCheck{{$i}}">OF# {{$key->quotation_invoice_number}}</label>
-                                                                            </div>
-                                                                        @endif
-                                                                    </td>
-                                                                    @if(Auth::guard('user')->user()->role_id == 2)
-                                                                        <td>{{$key->quote_request_id ? ($key->paid ? $key->quote_name . ' ' . $key->quote_familyname : 'vloerofferte.nl') : $key->name . ' ' . $key->family_name}}</td>
-                                                                    @else
-                                                                        <td>{{$key->company_name}}</td>
-                                                                    @endif
-                                                                    @if(Auth::guard('user')->user()->role_id == 2)
-                                                                        <?php
-                                                                            $payment_calculations = $key->payment_calculations;
-                                                                            $paid = 0;
-                                                                            foreach($payment_calculations as $p)
-                                                                            {
-                                                                                if($p->paid_by != "Pending")
-                                                                                {
-                                                                                    $paid = $paid + $p->amount;
-                                                                                }
-                                                                            }
-                                                                        ?>
-                                                                        <td>€ {{number_format((float)$key->grand_total, 2, ',', '.')}}</td>
-                                                                        <td>€ {{number_format((float)$paid, 2, ',', '.')}}</td>
-                                                                    @endif
-                                                                    <td>
-                                                                        <?php
-                                                                            $status = "";
-                                                                            $order_status = "";
-                                                                            $status_element = "";
-                                                                            $order_status_element = "";
-                                                                            if($key->status == 3) {
-                                                                                if($key->received)
-                                                                                {
-                                                                                    $status = "Goods Received";
-                                                                                    $status_element = '<span class="btn btn-success">'.__('text.Goods Received').'</span>';
-                                                                                }
-                                                                                elseif($key->delivered)
-                                                                                {
-                                                                                    $status = "Goods Delivered";
-                                                                                    $status_element = '<span class="btn btn-success">'.__('text.Goods Delivered').'</span>';
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    $status = "Invoice Generated";
-                                                                                    $status_element = '<span class="btn btn-success">'.__('text.Invoice Generated').'</span>';
-                                                                                }
-                                                                            } elseif($key->status == 2) {
-                                                                                if($key->accepted)
-                                                                                {
-                                                                                    if(!$key->quote_request_id)
-                                                                                    {
-                                                                                        $status = "Quotation Accepted";
-                                                                                        $status_element = '<span class="btn btn-primary1">'.__('text.Quotation Accepted').'</span>';
-                                                                                    }
-                                                                                    else
-                                                                                    {
-                                                                                        if($key->paid)
-                                                                                        {
-                                                                                            $status = "Paid";
-                                                                                            $status_element = '<span class="btn btn-success">'.__('text.Paid').'</span>';
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            $status = "Payment Pending";
-                                                                                            $status_element = '<span class="btn btn-primary1">'.__('text.Payment Pending').'</span>';
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    $status = "Closed";
-                                                                                    $status_element = '<span class="btn btn-success">'.__('text.Closed').'</span>';
-                                                                                }
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                if($key->ask_customization)
-                                                                                {
-                                                                                    $status = "Asking for Review";
-                                                                                    $status_element = '<span class="btn btn-info">'.__('text.Asking for Review').'</span>';
-                                                                                }
-                                                                                elseif($key->approved)
-                                                                                {
-                                                                                    $status = "Quotation Sent";
-                                                                                    $status_element = '<span class="btn btn-success">'.__('text.Quotation Sent').'</span>';
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    if($key->quote_request_id && $key->admin_quotation_sent)
-                                                                                    {
-                                                                                        $status = "Waiting For Approval";
-                                                                                        $status_element = '<span class="btn btn-info">'.__('text.Waiting For Approval').'</span>';
-                                                                                    }
-                                                                                    elseif($key->draft)
-                                                                                    {
-                                                                                        $status = "Draft";
-                                                                                        $status_element = '<span class="btn btn-info">'.__('text.Draft').'</span>';
-                                                                                    }
-                                                                                    else
-                                                                                    {
-                                                                                        $status = "Pending";
-                                                                                        $status_element = '<span class="btn btn-warning">'.__('text.Pending').'</span>';
-                                                                                    }
-                                                                                }
-                                                                            }
-
-                                                                            if($key->status != 3)
-                                                                            {
-                                                                                if($key->processing)
-                                                                                {
-                                                                                    $order_status = "Order Processing";
-                                                                                    $order_status_element = '<br><span class="btn btn-success mt-10">'.__('text.Order Processing').'</span>';
-                                                                                }
-                                                                                elseif($key->finished)
-                                                                                {
-                                                                                    if(Auth::guard('user')->user()->role_id == 2)
-                                                                                    {
-                                                                                        $data = $key->orders->unique('supplier_id'); $filteredData = $data->reject(function ($value, $key) {
-                                                                                            return $value['approved'] != 1;
-                                                                                        });
-
-                                                                                        if($filteredData->count() === $data->count())
-                                                                                        {
-                                                                                            if($data->contains('delivered',1))
-                                                                                            {
-                                                                                                $filteredData2 = $data->reject(function ($value, $key) {
-                                                                                                    return $value['delivered'] !== 1;
-                                                                                                });
-
-                                                                                                if($filteredData2->count() === $data->count())
-                                                                                                {
-                                                                                                    $order_status = "Delivered by supplier(s)";
-                                                                                                    $order_status_element = '<br><span class="btn btn-success mt-10">'.__('text.Delivered by supplier(s)').'</span>';
-                                                                                                }
-                                                                                                elseif($filteredData2->count() == 0)
-                                                                                                {
-                                                                                                    $order_status = "Confirmed by supplier(s)";
-                                                                                                    $order_status_element = '<br><span class="btn btn-success mt-10">'.__('text.Confirmed by supplier(s)').'</span>';
-                                                                                                }
-                                                                                                else
-                                                                                                {
-                                                                                                    $order_status = "";
-                                                                                                    $order_status_element = '<br><span class="btn btn-success mt-10">'.$filteredData2->count().'/'.$data->count().' '.__('text.Delivered Order').'</span>';
-                                                                                                }
-                                                                                            }
-                                                                                            else
-                                                                                            {
-                                                                                                $order_status = "Confirmed by supplier(s)";
-                                                                                                $order_status_element = '<br><span class="btn btn-success mt-10">'.__('text.Confirmed by supplier(s)').'</span>';
-                                                                                            }
-                                                                                        }
-                                                                                        elseif($filteredData->count() == 0)
-                                                                                        {
-                                                                                            $order_status = "Confirmation Pending";
-                                                                                            $order_status_element = '<br><span class="btn btn-warning mt-10">'.__('text.Confirmation Pending').'</span>';
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            $order_status = "";
-                                                                                            $order_status_element = '<br><span class="btn btn-success mt-10">'.$filteredData->count().'/'.$data->count().' '.__('text.Confirmed').'</span>';
-                                                                                        }
-                                                                                    }
-                                                                                    else
-                                                                                    {
-                                                                                        if($key->data_processing)
-                                                                                        {
-                                                                                            $order_status = "Processing";
-                                                                                            $order_status_element = '<span class="btn btn-warning">'.__('text.Processing').'</span>';
-                                                                                        }
-                                                                                        elseif($key->data_delivered)
-                                                                                        {
-                                                                                            $order_status = "Order Delivered";
-                                                                                            $order_status_element = '<span class="btn btn-warning">'.__('text.Order Delivered').'</span>';
-                                                                                        }
-                                                                                        elseif($key->data_approved)
-                                                                                        {
-                                                                                            $order_status = "Order Confirmed";
-                                                                                            $order_status_element = '<span class="btn btn-warning">'.__('text.Order Confirmed').'</span>';
-                                                                                        }
-                                                                                        else
-                                                                                        {
-                                                                                            $order_status = "Confirmation Pending";
-                                                                                            $order_status_element = '<span class="btn btn-warning">'.__('text.Confirmation Pending').'</span>';
-                                                                                        }
-                                                                                    }
-                                                                                }
-                                                                            }
-
-                                                                        ?>
-
-                                                                        @if(Auth::guard('user')->user()->role_id == 2)
-                                                                            {!! $status_element !!}
-                                                                        @endif
-                                                                        {!! $order_status_element !!}
-
-                                                                    </td>
-
-                                                                    <td data-sort="{{$date}}">{{$date1}}</td>
-
-                                                                    @if(Auth::guard('user')->user()->role_id == 2)
-
-                                                                        <td><p class="hovertext">{!! nl2br($key->regards) !!}</p></td>
-                                                                        <td>{{$status}}</td>
-                                                                        <td>{{$order_status}}</td>
-
-                                                                    @endif
-
-                                                                    <td style="position: relative;display: flex;align-items: center;">
-                                                                        <div style="margin-right: 5px;" class="dropdown dropdown1">
-                                                                            <button style="outline: none;position: relative;z-index: 1000;" class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">{{__('text.Action')}}
-                                                                                <span class="caret"></span>
-                                                                            </button>
-                                                                            <ul style="z-index: 1001;" class="dropdown-menu">
-                                                                                @if(Auth::guard('user')->user()->role_id == 2)
-                                                                                    @if($key->draft)
-                                                                                        <li><a href="{{ url('/aanbieder/approve-draft-quotation/'.$key->invoice_id) }}">{{__('text.Approve Draft')}}</a></li>
-                                                                                    @endif
-                                                                                    @if(!$key->quote_request_id)
-                                                                                        <li><a href="{{ url('/aanbieder/copy-new-quotation/'.$key->invoice_id) }}">{{__('text.Copy Quotation')}}</a></li>
-                                                                                    @endif
-                                                                                    <li><a class="delete-btn" data-href="{{ url('/aanbieder/delete-new-quotation/'.$key->invoice_id) }}">{{__('text.Delete Quotation')}}</a></li>
-                                                                                    <li><a href="{{ url('/aanbieder/messages/'.$key->invoice_id) }}">{{__('text.See Messages')}}</a></li>
-                                                                                    <li><a href="{{ url('/aanbieder/sent-emails/'.$key->invoice_id) }}">{{__('text.Sent Mails')}}</a></li>
-                                                                                    <li><a href="{{ url('/aanbieder/view-new-quotation/'.$key->invoice_id) }}">{{__('text.View Quotation')}}</a></li>
-                                                                                    @if($key->accepted)
-                                                                                        <li><a href="{{ url('/aanbieder/view-details/'.$key->invoice_id) }}">{{__('text.View Details')}}</a></li>
-                                                                                    @endif
-                                                                                    @if(!$key->invoice)
-                                                                                        @if((!$key->quote_request_id || $key->paid) && !$key->draft)
-                                                                                            <li><a style="cursor: pointer;" class="create-invoice-btn" data-href="{{ url('/aanbieder/create-new-invoice/'.$key->invoice_id) }}">{{__('text.Create Invoice')}}</a></li>
-                                                                                        @endif
-                                                                                    @else
-                                                                                        <li><a href="{{ url('/aanbieder/view-new-invoice/'.$key->invoice_id) }}">{{__('text.View Invoice')}}</a></li>
-                                                                                        <li><a href="{{ isset($key->invoices[0]) ? url('/aanbieder/download-invoice-pdf/'.$key->invoices[0]->id) : null }}">{{__('text.Download Invoice PDF')}}</a></li>
-                                                                                    @endif
-                                                                                    @if($key->paid)
-                                                                                        <li><a href="{{ url('/aanbieder/download-commission-invoice/'.$key->invoice_id) }}">{{__('text.Download Commission Invoice')}}</a></li>
-                                                                                    @endif
-                                                                                    @if($key->status != 2 && $key->status != 3)
-                                                                                        @if($key->ask_customization)
-                                                                                            <li><a onclick="ask(this)" data-text="{{$key->review_text}}" href="javascript:void(0)">{{__('text.Review Reason')}}</a></li>
-                                                                                        @endif
-                                                                                        @if(!$key->quote_request_id && !$key->draft)
-                                                                                            <li><a style="cursor: pointer;" class="accept-btn" data-href="{{ url('/aanbieder/accept-new-quotation/'.$key->invoice_id) }}">{{__('text.Accept')}}</a></li>
-                                                                                        @endif
-                                                                                    @endif
-                                                                                    @if($key->accepted && !$key->finished)
-                                                                                        <li><a href="{{ url('/aanbieder/discard-quotation/'.$key->invoice_id) }}">{{__('text.Discard Quotation')}}</a></li>
-                                                                                    @endif
-                                                                                    @if(!$key->quote_request_id || $key->paid)
-                                                                                        @if(count($key->orders) > 0)
-                                                                                            <li><a href="{{ url('/aanbieder/view-order/'.$key->invoice_id) }}">{{__('text.View Order')}}</a></li>
-                                                                                        @endif
-                                                                                    @endif
-                                                                                    @if(!$key->quote_request_id || $key->paid)
-                                                                                        @if($key->accepted && !$key->processing && !$key->finished)
-                                                                                            <li><a class="send-new-order" data-id="{{$key->invoice_id}}" data-date="{{$key->delivery_date ? date('d-m-Y',strtotime($key->delivery_date)) : null}}" href="javascript:void(0)">{{__('text.Send Order')}}</a></li>
-                                                                                        @endif
-                                                                                    @endif
-                                                                                    @if($key->received && !$key->retailer_delivered)
-                                                                                        <li><a href="{{ url('/aanbieder/retailer-mark-delivered/'.$key->invoice_id) }}">{{__('text.Mark as delivered')}}</a></li>
-                                                                                    @endif
-                                                                                    @if($key->status == 2)
-                                                                                        @if($key->finished)
-                                                                                            <?php $data = $key->orders->unique('supplier_id'); ?>
-                                                                                            @foreach($data as $d => $data1)
-                                                                                                <li><a href="{{ url('/aanbieder/download-order-pdf/'.$data1->id) }}">{{__('text.Download Supplier (:attribute) Order PDF',['attribute' => $data1->company_name])}}</a></li>
-                                                                                            @endforeach
-                                                                                        @endif
-                                                                                        <?php $data = $key->orders->unique('supplier_id'); ?>
-                                                                                        @foreach($data as $d => $data1)
-                                                                                            @if($data1->approved)
-                                                                                                <li><a href="{{ url('/aanbieder/download-order-confirmation-pdf/'.$data1->id) }}">{{__('text.Download Supplier (:attribute) Order Confirmation PDF',['attribute' => $data1->company_name])}}</a></li>
-                                                                                            @endif
-                                                                                        @endforeach
-                                                                                    @endif
-                                                                                    <li><a href="{{ url('/aanbieder/download-new-quotation/'.$key->invoice_id) }}">{{__('text.Download PDF')}}</a></li>
-                                                                                    @if(!$key->quote_request_id || $key->paid)
-                                                                                        @if(!$key->processing)
-                                                                                            @if(count($key->orders) > 0)
-                                                                                                <li><a href="{{ url('/aanbieder/download-full-order-pdf/'.$key->invoice_id) }}">{{__('text.Download Full Order PDF')}}</a></li>
-                                                                                            @endif
-                                                                                        @endif
-                                                                                    @endif
-                                                                                    @if($key->quote_request_id && !$key->admin_quotation_sent)
-                                                                                        <li><a href="{{ url('/aanbieder/send-quotation-admin/'.$key->invoice_id) }}">{{__('text.Send Quotation')}}</a></li>
-                                                                                    @endif
-                                                                                    @if(!$key->quote_request_id)
-                                                                                        <li><a class="send-new-quotation" data-id="{{$key->invoice_id}}" href="javascript:void(0)">{{__('text.Send Quotation')}}</a></li>
-                                                                                    @endif
-                                                                                @else
-                                                                                    <li><a href="{{ url('/aanbieder/view-order/'.$key->invoice_id) }}">{{__('text.View Order')}}</a></li>
-                                                                                    @if(!$key->data_delivered && !$key->data_processing)
-                                                                                        <li><a href="{{ url('/aanbieder/change-delivery-dates/'.$key->invoice_id) }}">{{__('text.Edit Delivery Dates')}}</a></li>
-                                                                                    @endif
-                                                                                    @if($key->data_approved && !$key->data_delivered)
-                                                                                        <li><a href="{{ url('/aanbieder/supplier-order-delivered/'.$key->invoice_id) }}">{{__('text.Mark as delivered')}}</a></li>
-                                                                                    @endif
-                                                                                    @if($key->data_approved)
-                                                                                        <li><a href="{{ url('/aanbieder/download-order-confirmation-pdf/'.$key->data_id) }}">{{__('text.Download Order Confirmation PDF')}}</a></li>
-                                                                                    @endif
-                                                                                    <li><a href="{{ url('/aanbieder/download-order-pdf/'.$key->data_id) }}">{{__('text.Download Order PDF')}}</a></li>
-                                                                                @endif
-                                                                            </ul>
-                                                                        </div>
-                                                                        @if(Auth::guard('user')->user()->role_id == 2)
-                                                                            @if(count($key->unseen_messages) > 0)
-                                                                                <a href="{{ url('/aanbieder/messages/'.$key->invoice_id) }}">
-                                                                                    <main style="width: 3.5em;height: 3em;" rel="main">
-                                                                                        <div style="width: 100%;height: 100%;" class="notification">
-                                                                                            <svg viewbox="-10 -2 35 20">
-                                                                                                <path class="notification--bell" d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"></path>
-                                                                                            </svg>
-                                                                                            <span style="width: 16px;height: 16px;top: 0;font-weight: 100;" class="notification--num">{{count($key->unseen_messages)}}</span>
-                                                                                        </div>
-                                                                                    </main>
-                                                                                </a>
-                                                                            @endif
-                                                                            <a href="{{ url('/aanbieder/view-new-quotation/'.$key->invoice_id) }}" style="cursor: pointer;font-size: 20px;margin-left: 5px;width: 20px;height: 20px;line-height: 20px;">
-                                                                                <i style="width: 100%;" class="fa fa-fw fa-edit"></i>
-                                                                            </a>
-                                                                            <a class="delete-btn" data-href="{{ url('/aanbieder/delete-new-quotation/'.$key->invoice_id) }}" style="cursor: pointer;font-size: 20px;margin-left: 5px;width: 20px;height: 20px;line-height: 20px;">
-                                                                                <i style="width: 100%;" class="fa fa-fw fa-trash-o"></i>
-                                                                            </a>
-                                                                            @if(!$key->quote_request_id)
-                                                                                <a href="{{ url('/aanbieder/copy-new-quotation/'.$key->invoice_id) }}" style="cursor: pointer;font-size: 20px;margin-left: 5px;width: 20px;height: 20px;line-height: 20px;">
-                                                                                    <i style="width: 100%;" class="fa fa-fw fa-copy"></i>
-                                                                                </a>
-                                                                            @endif
-                                                                        @endif
-                                                                    </td>
-                                                                </tr>
-                                                                @endif
-                                                            @endforeach
-                                                        </tbody> --}}
-                                                        {{-- @if(Auth::guard('user')->user()->role_id == 2)
-                                                            <tfoot>
-                                                                <tr>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                    <th style="text-align: left;"></th>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                    <th></th>
-                                                                </tr>
-                                                            </tfoot>
-                                                        @endif --}}
                                                     </table>
-                                                    {{-- {{ Auth::user()->role_id }} --}}
                                                 </form>
                                             </div>
                                         </div>
@@ -1585,8 +1130,6 @@
             $(this).parent().find('.delete_quotations_options').val(isChecked ? 1 : 0);
         });
 
-
-
         $('#filter_date').datepicker({
             format: 'mm-yyyy',
             language: 'du',
@@ -1614,25 +1157,27 @@
     </script>
     @if(Auth::guard('user')->user()->role_id == 2)
         <script>
-            $(".accept-btn").on('click', function () {
-                var href = $(this).data("href");
-                Swal.fire({
-					title: '{{__("text.Are you sure?")}}',
-					text: '{{__("text.Are you sure you want to accept this quote")}}',
-					icon: 'question',
-					showCancelButton: true,
-					confirmButtonColor: '#3085d6',
-					cancelButtonColor: '#d33',
-					confirmButtonText: '{{__("text.Yes")}}!',
-					cancelButtonText: '{{__("text.Cancel")}}',
-				}).then((result) => {
-					if (result.value) {
-						window.location.href = href;
-					}
-				});
+            $(document).ready(function () {
+                $(document).on('click', '.accept-btn', function () {
+                    var href = $(this).data("href");
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: 'Are you sure you want to accept this quote?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes!',
+                        cancelButtonText: 'Cancel',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = href;
+                        }
+                    });
+                });
             });
 
-            $(".create-invoice-btn").on('click', function () {
+            $(document).on('click', '.create-invoice-btn', function () {
                 var href = $(this).data("href");
                 Swal.fire({
 					title: '{{__("text.Are you sure?")}}',
@@ -1662,10 +1207,13 @@
                 table = $('#' + tableId).DataTable({
                     processing: true,
                     responsive: false,
+                    autoWidth: false,
+                    scrollX: true,
                     rowReorder: {
                         selector: 'td:nth-child(2)'
                     },
                     order: [ [1, 'desc'] ],
+                    pageLength: 100,
                     serverSide: true,
                     ajax: function(data, callback, settings) {
                         // Collect filter values
@@ -1712,49 +1260,7 @@
                 });
                 $('.filter_year, .filter_month, .filter_status').on('change', function() {
                     table.ajax.reload();
-                    // filter();
                 });
-
-
-                // function filter(page_load = 0) {
-                //     $.fn.dataTable.ext.search.push(
-                //         function(settings, data, dataIndex) {
-                //             var filter_status = $(".filter_status").val();
-                //             var all_status_elements = data[table.column('all_status_elements:name').index()];
-
-                //             var status_match = true;
-
-                //             if (filter_status) {
-                //                 var status_elements = all_status_elements.split('<br>');
-                //                 status_match = status_elements.some(function(element) {
-                //                     return element.includes(filter_status);
-                //                 });
-                //             }
-
-                //             return status_match;
-                //         }
-                //     );
-
-                //     var filter_text = $("#filter_text").val();
-                //     table.search(filter_text).draw();
-
-                //     if (!page_load) {
-                //         var filter_month = $(".filter_month").val();
-                //         var filter_year = $(".filter_year").val();
-                //         var filter_status = $(".filter_status").val();
-
-                //         $.ajax({
-                //             type: "GET",
-                //             data: "filter_text=" + filter_text + "&filter_month=" + filter_month + '&filter_year=' + filter_year + '&filter_status=' + filter_status + '&type=1',
-                //             url: "{{ route('user-update-filter') }}",
-                //             success: function(data) {
-                //                 console.log('data', data);
-
-                //             },
-                //             error: function(data) {}
-                //         });
-                //     }
-                // }
             });
         </script>
     @endif
