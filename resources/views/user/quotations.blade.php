@@ -1093,9 +1093,9 @@
         }
 
         /* td span.btn
-                                                                {
-                                                                    width: 100%;
-                                                                } */
+                                                                                                                                                        {
+                                                                                                                                                            width: 100%;
+                                                                                                                                                        } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1246,6 +1246,12 @@
                 var screen_width = $(window).width();
                 var tableId = 'example';
                 var table;
+                var dateColumn = 5;
+                var statusColumn = 4;
+                var orderStatusColumn = 6;
+                var amountColumn = 2;
+                var paidColumn = 3;
+
                 table = $('#' + tableId).DataTable({
                     processing: true,
                     responsive: false,
@@ -1254,9 +1260,6 @@
                     rowReorder: {
                         selector: 'td:nth-child(2)'
                     },
-                    order: [
-                        [1, 'desc']
-                    ],
                     pageLength: 100,
                     serverSide: true,
                     ajax: function(data, callback, settings) {
@@ -1334,6 +1337,28 @@
                     ],
                     search: {
                         "regex": true
+                    },
+                    order: [
+                        [dateColumn, 'desc']
+                    ],
+                    drawCallback: function(settings) {
+                        var api = this.api();
+                        var rows = api.rows({
+                            page: 'current'
+                        }).nodes();
+                        var last = null;
+
+                        api.column(5, {
+                            page: 'current'
+                        }).data().each(function(date1, i) {
+                            if (last !== date1) {
+                                $(rows).eq(i).before(
+                                    '<tr class="group"><td colspan="8"><strong>' + date1 + '</strong></td></tr>'
+                                );
+
+                                last = date1;
+                            }
+                        });
                     }
                 });
                 $('.filter_year, .filter_month, .filter_status').on('change', function() {
