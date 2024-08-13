@@ -1136,221 +1136,355 @@ class UserController extends Controller
         return response()->json(["draw" => $request->draw, "recordsTotal" => $recordsTotal, "recordsFiltered" => $recordsFiltered, 'data' => $invoices], 200);
     }
 
-    public function CustomerQuotations(Request $request, $id = '')
+    public function CustomerQuotationAjax(Request $request)
     {
-        $user_id = '';
-        $user_role = '';
-        if (Auth::check()) {
-            $user = Auth::guard('user')->user();
-            $user_id = $user->id;
-            $user_role = $user->role_id;
+        if (!Auth::check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
+
+        $user = Auth::guard('user')->user();
+        $user_id = $user->id;
+        $user_role = $user->role_id;
         $organization_id = $user->organization->id;
-        $organization = organizations::findOrFail($organization_id);
-        $related_users = $organization->users()->withTrashed()->select('users.id')->pluck('id');
-        $query = new_quotations::leftjoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')->leftjoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')->whereIn('new_quotations.creator_id', $related_users);
+        $related_users = \App\User::join('user_organizations', 'user_organizations.user_id', '=', 'users.id')
+            ->where('user_organizations.organization_id', $organization_id)
+            ->select('users.id')
+            ->pluck('id');
+
+        // Base query
+        $query = new_quotations::leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
+            ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
+            ->whereIn('new_quotations.creator_id', $related_users);
 
         // Apply filters
-        if ($request->has('year') && $request->year) {
+        if ($request->filled('year')) {
             $query->whereYear('new_quotations.created_at', $request->year);
         }
 
-        if ($request->has('month') && $request->month) {
+        if ($request->filled('month')) {
             $query->whereMonth('new_quotations.created_at', $request->month);
         }
 
-        if ($request->has('status') && $request->status) {
+        if ($request->filled('status')) {
             $this->filterStatus($query, $request->status);
         }
-        if ($user_role == 2) {
-            if ($user->can('create-new-quotation')) {
-                $new_invoices = $query->where('new_quotations.status', '!=', 3)->orderBy('new_quotations.created_at', 'desc')
-                    ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname')
-                    ->with('orders')
-                    ->with('invoices')
-                    ->with('unseen_messages')
-                    ->with('payment_calculations');
+
+        if ($keyword = $request->input('search.value')) {
+            $s_statuses = ucwords($request->input('search.value'));
+            if (in_array($s_statuses, ['Pending', 'Draft', 'Waiting For Approval', 'Quotation Sent', 'Asking for Review', 'Quotation Accepted', 'Payment Pending', 'Paid', 'Invoice Generated', 'Goods Delivered', 'Goods Received', 'Closed', 'Order Processing', 'Processing', 'Order Delivered', 'Order Confirmed', 'Confirmation Pending'])) {
+                $this->filterStatus($query, $s_statuses);
             } else {
-                $new_invoices = collect(new new_quotations());
+                $date_f = date('Y-m-d', strtotime($keyword));
+                $keyword = '%' . $keyword . '%';
+                $query->where(function ($query) use ($keyword, $date_f) {
+                    $query->where('quotes.quote_name', 'LIKE', $keyword)
+                        ->orWhere('quotes.quote_familyname', 'LIKE', $keyword)
+                        ->orWhere('new_quotations.grand_total', 'LIKE', $keyword)
+                        ->orWhere('customers_details.name', 'LIKE', $keyword)
+                        ->orWhere('customers_details.family_name', 'LIKE', $keyword)
+                        ->orWhere('new_quotations.quotation_invoice_number', 'LIKE', $keyword)
+                        ->orWhereDate('new_quotations.created_at', $date_f);
+                });
+            }
+        }
+
+        if ($user_role == 2) {
+            // Role-specific filtering and selection
+            if ($user->can('create-new-quotation')) {
+                $new_invoices = $query->where('new_quotations.status', '!=', 3)
+                    ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname')
+                    ->orderBy('new_quotations.created_at', 'desc');
+            } else {
+                $new_invoices = collect(); // Empty collection if no permission
             }
             $invoices = $new_invoices;
         } else {
-            $invoices = $query->leftjoin('new_orders', 'new_orders.quotation_id', '=', 'new_quotations.id')
-                ->leftjoin('organizations', 'organizations.id', '=', 'new_orders.supplier_id')
-                ->where('new_orders.deleted_at', NULL)
+            // Handle the case for non-role 2 users
+            $invoices = $query->leftJoin('new_orders', 'new_orders.quotation_id', '=', 'new_quotations.id')
+                ->leftJoin('organizations', 'organizations.id', '=', 'new_orders.supplier_id')
+                ->whereNull('new_orders.deleted_at')
                 ->where('new_orders.supplier_id', $organization_id)
                 ->where('new_quotations.finished', 1)
                 ->orderBy('new_quotations.created_at', 'desc')
                 ->select('organizations.company_name', 'new_quotations.*', 'new_orders.order_sent', 'new_orders.id as data_id', 'new_orders.order_number', 'new_orders.approved as data_approved', 'new_orders.processing as data_processing', 'new_orders.delivered as data_delivered')
-                ->with('invoices')
-                ->with('payment_calculations');
-            $invoices = $invoices->get()->unique('invoice_id');
+                ->with('invoices', 'payment_calculations')
+                ->get()
+                ->unique('invoice_id');
         }
-        if (\request()->ajax()) {
-            return DataTables::of($invoices)->addColumn('document_number', function ($key) use ($user) {
-                if ($user->role_id == 2) {
-                    return '
+
+        return DataTables::of($invoices)
+            ->smart(true)
+            ->addColumn('document_number', function ($key) use ($user) {
+                return '
                         <div style="display: flex; align-items: center;" class="custom-control custom-checkbox mb-3">
                             <input type="checkbox" style="margin: 0;" class="custom-control-input" id="customCheck' . $key->id . '">
                             <input type="hidden" name="quotation_ids[]" class="quotation_ids" value="' . $key->invoice_id . '">
                             <input type="hidden" class="delete_quotations_options" name="delete_quotations_options[]">
                             <label style="margin: 0 0 0 5px; font-weight: 500;" class="custom-control-label" for="customCheck' . $key->id . '">OF# ' . $key->quotation_invoice_number . '</label>
                         </div>';
-                } else {
-                    return '<a href="">OR# ' . $key->order_number . '</a>';
-                }
-            })->addColumn('customer_name', function ($key) use ($user) {
+            })
+            ->addColumn('customer_name', function ($key) {
                 return $key->quote_request_id ? ($key->paid ? $key->quote_name . ' ' . $key->quote_familyname : 'vloerofferte.nl') : $key->name . ' ' . $key->family_name;
-            })->addColumn('grand_total', function ($key) use ($user) {
-                return "€ " . number_format((float)$key->grand_total, 2, ',', '.');
-            })->addColumn('paid', function ($key) use ($user) {
-                $paid = 0;
-                if ($user->role_id == 2) {
-                    foreach ($key->payment_calculations as $payment) {
-                        if ($payment->paid_by != "Pending") {
-                            $paid += $payment->amount;
-                        }
+            })
+            ->addColumn('grand_total', function ($key) {
+                return "€ " . number_format((float)$key->grand_total, 2);
+            })
+            ->addColumn('paid', function ($key) use ($user) {
+                if ($user->role_id != 2) return '';
+                $paid = $key->payment_calculations->where('paid_by', '!=', 'Pending')->sum('amount');
+                return '€ ' . number_format($paid, 2, '.', ',');
+            })
+            ->addColumn('all_status_elements', function ($key) use ($user) {
+                return $this->getStatusElements($key, $user);
+            })
+            ->addColumn('date1', function ($key) {
+                return date('d-m-Y', strtotime($key->invoice_date));
+            })
+            ->addColumn('regards', function ($key) use ($user) {
+                return $user->role_id == 2 ? '<p class="hovertext">' . nl2br($key->regards) . '</p>' : '';
+            })
+            ->addColumn('action', function ($key) use ($user_role) {
+
+                return '<div class="dropdown dropdown1">
+                        <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                            ' . __('text.Action') . ' <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            ' . $this->generateActionMenu($key, $user_role) . '
+                        </ul>
+                    </div>';
+            })
+            ->rawColumns(['document_number', 'customer_name', 'grand_total', 'paid', 'all_status_elements', 'regards', 'status', 'order_status', 'action'])
+            ->make(true);
+    }
+
+    private function generateActionMenu($key, $user_role)
+    {
+        $invoice_id = $key->invoice_id;
+        $actions = '';
+
+        if ($user_role == 2) {
+            if ($key->draft) {
+                $actions .= '<li><a href="' . url('/aanbieder/approve-draft-quotation/' . $invoice_id) . '">' . __('text.Approve Draft') . '</a></li>';
+            }
+
+            if (!$key->quote_request_id) {
+                $actions .= '<li><a href="' . url('/aanbieder/copy-new-quotation/' . $invoice_id) . '">' . __('text.Copy Quotation') . '</a></li>';
+            }
+
+            $actions .= '<li><a class="delete-btn" data-href="' . url('/aanbieder/delete-new-quotation/' . $invoice_id) . '">' . __('text.Delete Quotation') . '</a></li>';
+            $actions .= '<li><a href="' . url('/aanbieder/messages/' . $invoice_id) . '">' . __('text.See Messages') . '</a></li>';
+            $actions .= '<li><a href="' . url('/aanbieder/sent-emails/' . $invoice_id) . '">' . __('text.Sent Mails') . '</a></li>';
+            $actions .= '<li><a href="' . url('/aanbieder/view-new-quotation/' . $invoice_id) . '">' . __('text.View Quotation') . '</a></li>';
+
+            if ($key->accepted) {
+                $actions .= '<li><a href="' . url('/aanbieder/view-details/' . $invoice_id) . '">' . __('text.View Details') . '</a></li>';
+            }
+
+            if (!$key->invoice) {
+                if ((!$key->quote_request_id || $key->paid) && !$key->draft) {
+                    $actions .= '<li><a class="create-invoice-btn" data-href="' . url('/aanbieder/create-new-invoice/' . $invoice_id) . '">' . __('text.Create Invoice') . '</a></li>';
+                }
+            } else {
+                $actions .= '<li><a href="' . url('/aanbieder/view-new-invoice/' . $invoice_id) . '">' . __('text.View Invoice') . '</a></li>';
+                $actions .= '<li><a href="' . (isset($key->invoices[0]) ? url('/aanbieder/download-invoice-pdf/' . $key->invoices[0]->id) : '#') . '">' . __('text.Download Invoice PDF') . '</a></li>';
+            }
+
+            if ($key->paid) {
+                $actions .= '<li><a href="' . url('/aanbieder/download-commission-invoice/' . $invoice_id) . '">' . __('text.Download Commission Invoice') . '</a></li>';
+            }
+
+            if ($key->status != 2 && $key->status != 3) {
+                if ($key->ask_customization) {
+                    $actions .= '<li><a onclick="ask(this)" data-text="' . $key->review_text . '" href="javascript:void(0)">' . __('text.Review Reason') . '</a></li>';
+                }
+
+                if (!$key->quote_request_id && !$key->draft) {
+                    $actions .= '<li><a class="accept-btn" data-href="' . url('/aanbieder/accept-new-quotation/' . $invoice_id) . '">' . __('text.Accept') . '</a></li>';
+                }
+            }
+
+            if ($key->accepted && !$key->finished) {
+                $actions .= '<li><a href="' . url('/aanbieder/discard-quotation/' . $invoice_id) . '">' . __('text.Discard Quotation') . '</a></li>';
+            }
+
+            if (!$key->quote_request_id || $key->paid) {
+                if (count($key->orders) > 0) {
+                    $actions .= '<li><a href="' . url('/aanbieder/view-order/' . $invoice_id) . '">' . __('text.View Order') . '</a></li>';
+                }
+            }
+
+            if (!$key->quote_request_id || $key->paid) {
+                if ($key->accepted && !$key->processing && !$key->finished) {
+                    $actions .= '<li><a class="send-new-order" data-id="' . $invoice_id . '" data-date="' . ($key->delivery_date ? date('d-m-Y', strtotime($key->delivery_date)) : '') . '" href="javascript:void(0)">' . __('text.Send Order') . '</a></li>';
+                }
+            }
+
+            if ($key->received && !$key->retailer_delivered) {
+                $actions .= '<li><a href="' . url('/aanbieder/retailer-mark-delivered/' . $invoice_id) . '">' . __('text.Mark as delivered') . '</a></li>';
+            }
+
+            if ($key->status == 2) {
+                if ($key->finished) {
+                    foreach ($key->orders->unique('supplier_id') as $data) {
+                        $actions .= '<li><a href="' . url('/aanbieder/download-order-pdf/' . $data->id) . '">' . __('text.Download Supplier (:attribute) Order PDF', ['attribute' => $data->company_name]) . '</a></li>';
                     }
                 }
-                return '€ ' . number_format($paid, 2, ',', '.');
-            })->addColumn('all_status_elements', function ($key) use ($user) {
-                $status = "";
-                $order_status = "";
-                $status_element = "";
-                $order_status_element = "";
-                if ($key->status == 3) {
-                    if ($key->received) {
-                        $status = "Goods Received";
-                        $status_element = '<span class="btn btn-success">' . __('text.Goods Received') . '</span>';
-                    } elseif ($key->delivered) {
-                        $status = "Goods Delivered";
-                        $status_element = '<span class="btn btn-success">' . __('text.Goods Delivered') . '</span>';
-                    } else {
-                        $status = "Invoice Generated";
-                        $status_element = '<span class="btn btn-success">' . __('text.Invoice Generated') . '</span>';
+
+                foreach ($key->orders->unique('supplier_id') as $data) {
+                    if ($data->approved) {
+                        $actions .= '<li><a href="' . url('/aanbieder/download-order-confirmation-pdf/' . $data->id) . '">' . __('text.Download Supplier (:attribute) Order Confirmation PDF', ['attribute' => $data->company_name]) . '</a></li>';
                     }
-                } elseif ($key->status == 2) {
-                    if ($key->accepted) {
-                        if (!$key->quote_request_id) {
-                            $status = "Quotation Accepted";
-                            $status_element = '<span class="btn btn-primary1">' . __('text.Quotation Accepted') . '</span>';
-                        } else {
-                            if ($key->paid) {
-                                $status = "Paid";
-                                $status_element = '<span class="btn btn-success">' . __('text.Paid') . '</span>';
-                            } else {
-                                $status = "Payment Pending";
-                                $status_element = '<span class="btn btn-primary1">' . __('text.Payment Pending') . '</span>';
-                            }
-                        }
+                }
+            }
+
+            $actions .= '<li><a href="' . url('/aanbieder/download-new-quotation/' . $invoice_id) . '">' . __('text.Download PDF') . '</a></li>';
+
+            if (!$key->quote_request_id || $key->paid) {
+                if (!$key->processing && count($key->orders) > 0) {
+                    $actions .= '<li><a href="' . url('/aanbieder/download-full-order-pdf/' . $invoice_id) . '">' . __('text.Download Full Order PDF') . '</a></li>';
+                }
+            }
+
+            if ($key->quote_request_id && !$key->admin_quotation_sent) {
+                $actions .= '<li><a href="' . url('/aanbieder/send-quotation-admin/' . $invoice_id) . '">' . __('text.Send Quotation') . '</a></li>';
+            }
+
+            if (!$key->quote_request_id) {
+                $actions .= '<li><a class="send-new-quotation" data-id="' . $invoice_id . '" href="javascript:void(0)">' . __('text.Send Quotation') . '</a></li>';
+            }
+        } else {
+            $actions .= '<li><a href="' . url('/aanbieder/view-order/' . $invoice_id) . '">' . __('text.View Order') . '</a></li>';
+            if (!$key->data_delivered && !$key->data_processing) {
+                $actions .= '<li><a href="' . url('/aanbieder/change-delivery-dates/' . $invoice_id) . '">' . __('text.Edit Delivery Dates') . '</a></li>';
+            }
+            if ($key->data_approved && !$key->data_delivered) {
+                $actions .= '<li><a href="' . url('/aanbieder/supplier-order-delivered/' . $invoice_id) . '">' . __('text.Mark as delivered') . '</a></li>';
+            }
+            if ($key->data_approved) {
+                $actions .= '<li><a href="' . url('/aanbieder/download-order-confirmation-pdf/' . $key->data_id) . '">' . __('text.Download Order Confirmation PDF') . '</a></li>';
+            }
+            $actions .= '<li><a href="' . url('/aanbieder/download-order-pdf/' . $key->data_id) . '">' . __('text.Download Order PDF') . '</a></li>';
+        }
+
+        return $actions;
+    }
+
+    private function getStatusElements($key, $user)
+    {
+        $statusElement = "";
+        $orderStatusElement = "";
+
+        // Determine status element based on the quotation status
+        switch ($key->status) {
+            case 3:
+                if ($key->received) {
+                    $status = "Goods Received";
+                    $statusElement = '<span class="btn btn-success">' . __('text.Goods Received') . '</span>';
+                } elseif ($key->delivered) {
+                    $status = "Goods Delivered";
+                    $statusElement = '<span class="btn btn-success">' . __('text.Goods Delivered') . '</span>';
+                } else {
+                    $status = "Invoice Generated";
+                    $statusElement = '<span class="btn btn-success">' . __('text.Invoice Generated') . '</span>';
+                }
+                break;
+            case 2:
+                if ($key->accepted) {
+                    if (!$key->quote_request_id) {
+                        $status = "Quotation Accepted";
+                        $statusElement = '<span class="btn btn-primary1">' . __('text.Quotation Accepted') . '</span>';
                     } else {
-                        $status = "Closed";
-                        $status_element = '<span class="btn btn-success">' . __('text.Closed') . '</span>';
+                        $status = $key->paid ? "Paid" : "Payment Pending";
+                        $statusElement = '<span class="btn ' . ($key->paid ? 'btn-success' : 'btn-primary1') . '">' . __($key->paid ? 'text.Paid' : 'text.Payment Pending') . '</span>';
                     }
                 } else {
-                    if ($key->ask_customization) {
-                        $status = "Asking for Review";
-                        $status_element = '<span class="btn btn-info">' . __('text.Asking for Review') . '</span>';
-                    } elseif ($key->approved) {
-                        $status = "Quotation Sent";
-                        $status_element = '<span class="btn btn-success">' . __('text.Quotation Sent') . '</span>';
+                    $status = "Closed";
+                    $statusElement = '<span class="btn btn-success">' . __('text.Closed') . '</span>';
+                }
+                break;
+            default:
+                if ($key->ask_customization) {
+                    $status = "Asking for Review";
+                    $statusElement = '<span class="btn btn-info">' . __('text.Asking for Review') . '</span>';
+                } elseif ($key->approved) {
+                    $status = "Quotation Sent";
+                    $statusElement = '<span class="btn btn-success">' . __('text.Quotation Sent') . '</span>';
+                } else {
+                    if ($key->quote_request_id && $key->admin_quotation_sent) {
+                        $status = "Waiting For Approval";
+                        $statusElement = '<span class="btn btn-info">' . __('text.Waiting For Approval') . '</span>';
+                    } elseif ($key->draft) {
+                        $status = "Draft";
+                        $statusElement = '<span class="btn btn-info">' . __('text.Draft') . '</span>';
                     } else {
-                        if ($key->quote_request_id && $key->admin_quotation_sent) {
-                            $status = "Waiting For Approval";
-                            $status_element = '<span class="btn btn-info">' . __('text.Waiting For Approval') . '</span>';
-                        } elseif ($key->draft) {
-                            $status = "Draft";
-                            $status_element = '<span class="btn btn-info">' . __('text.Draft') . '</span>';
-                        } else {
-                            $status = "Pending";
-                            $status_element = '<span class="btn btn-warning">' . __('text.Pending') . '</span>';
-                        }
+                        $status = "Pending";
+                        $statusElement = '<span class="btn btn-warning">' . __('text.Pending') . '</span>';
                     }
                 }
-
-                if ($key->status != 3) {
-                    if ($key->processing) {
-                        $order_status = "Order Processing";
-                        $order_status_element = '<br><span class="btn btn-success mt-10">' . __('text.Order Processing') . '</span>';
-                    } elseif ($key->finished) {
-                        if ($user->role_id == 2) {
-                            $data = $key->orders->unique('supplier_id');
-                            $filteredData = $data->reject(function ($value, $key) {
-                                return $value['approved'] != 1;
-                            });
-
-                            if ($filteredData->count() === $data->count()) {
-                                if ($data->contains('delivered', 1)) {
-                                    $filteredData2 = $data->reject(function ($value, $key) {
-                                        return $value['delivered'] !== 1;
-                                    });
-
-                                    if ($filteredData2->count() === $data->count()) {
-                                        $order_status = "Delivered by supplier(s)";
-                                        $order_status_element = '<br><span class="btn btn-success mt-10">' . __('text.Delivered by supplier(s)') . '</span>';
-                                    } elseif ($filteredData2->count() == 0) {
-                                        $order_status = "Confirmed by supplier(s)";
-                                        $order_status_element = '<br><span class="btn btn-success mt-10">' . __('text.Confirmed by supplier(s)') . '</span>';
-                                    } else {
-                                        $order_status = "";
-                                        $order_status_element = '<br><span class="btn btn-success mt-10">' . $filteredData2->count() . '/' . $data->count() . ' ' . __('text.Delivered Order') . '</span>';
-                                    }
-                                } else {
-                                    $order_status = "Confirmed by supplier(s)";
-                                    $order_status_element = '<br><span class="btn btn-success mt-10">' . __('text.Confirmed by supplier(s)') . '</span>';
-                                }
-                            } elseif ($filteredData->count() == 0) {
-                                $order_status = "Confirmation Pending";
-                                $order_status_element = '<br><span class="btn btn-warning mt-10">' . __('text.Confirmation Pending') . '</span>';
-                            } else {
-                                $order_status = "";
-                                $order_status_element = '<br><span class="btn btn-success mt-10">' . $filteredData->count() . '/' . $data->count() . ' ' . __('text.Confirmed') . '</span>';
-                            }
-                        } else {
-                            if ($key->data_processing) {
-                                $order_status = "Processing";
-                                $order_status_element = '<span class="btn btn-warning">' . __('text.Processing') . '</span>';
-                            } elseif ($key->data_delivered) {
-                                $order_status = "Order Delivered";
-                                $order_status_element = '<span class="btn btn-warning">' . __('text.Order Delivered') . '</span>';
-                            } elseif ($key->data_approved) {
-                                $order_status = "Order Confirmed";
-                                $order_status_element = '<span class="btn btn-warning">' . __('text.Order Confirmed') . '</span>';
-                            } else {
-                                $order_status = "Confirmation Pending";
-                                $order_status_element = '<span class="btn btn-warning">' . __('text.Confirmation Pending') . '</span>';
-                            }
-                        }
-                    }
-                }
-
-                $all_status_elements = "";
-
-                if ($user->role_id == 2) {
-                    $all_status_elements = $all_status_elements . $status_element;
-                }
-
-                $all_status_elements = $all_status_elements . $order_status_element;
-                return $all_status_elements;
-            })->addColumn('date1', function ($key) use ($user) {
-                $date = strtotime($key->invoice_date);
-                $date1 = date('d-m-Y', $date);
-                return $date1;
-            })->addColumn('regards', function ($key) use ($user) {
-                $regards = "";
-                if ($user->role_id == 2) {
-                    $regards = '<p class="hovertext">' . nl2br($key->regards) . '</p>';
-                }
-                return $regards;
-            })->addColumn('status', function ($key) use ($user) {
-                return "";
-            })->addColumn('order_status', function ($key) use ($user) {
-                return "";
-            })->addColumn('action', function ($key) use ($user) {
-                return view('partials._quotations', compact('key'))->render();
-            })->rawColumns(['document_number', 'customer_name', 'grand_total', 'paid', 'all_status_elements', 'regards', 'status', 'order_status', 'action'])->make(true);
+                break;
         }
-        return view('user.quotations', compact("invoices"));
+
+        // Determine order status element
+        if ($key->status != 3) {
+            if ($key->processing) {
+                $orderStatus = "Order Processing";
+                $orderStatusElement = '<br><span class="btn btn-success mt-10">' . __('text.Order Processing') . '</span>';
+            } elseif ($key->finished) {
+                if ($user->role_id == 2) {
+                    $data = $key->orders->unique('supplier_id');
+                    $filteredData = $data->where('approved', 1);
+
+                    if ($filteredData->count() === $data->count()) {
+                        if ($data->contains('delivered', 1)) {
+                            $filteredData2 = $data->where('delivered', 1);
+
+                            if ($filteredData2->count() === $data->count()) {
+                                $orderStatus = "Delivered by supplier(s)";
+                                $orderStatusElement = '<br><span class="btn btn-success mt-10">' . __('text.Delivered by supplier(s)') . '</span>';
+                            } elseif ($filteredData2->isEmpty()) {
+                                $orderStatus = "Confirmed by supplier(s)";
+                                $orderStatusElement = '<br><span class="btn btn-success mt-10">' . __('text.Confirmed by supplier(s)') . '</span>';
+                            } else {
+                                $orderStatus = "";
+                                $orderStatusElement = '<br><span class="btn btn-success mt-10">' . $filteredData2->count() . '/' . $data->count() . ' ' . __('text.Delivered Order') . '</span>';
+                            }
+                        } else {
+                            $orderStatus = "Confirmed by supplier(s)";
+                            $orderStatusElement = '<br><span class="btn btn-success mt-10">' . __('text.Confirmed by supplier(s)') . '</span>';
+                        }
+                    } elseif ($filteredData->isEmpty()) {
+                        $orderStatus = "Confirmation Pending";
+                        $orderStatusElement = '<br><span class="btn btn-warning mt-10">' . __('text.Confirmation Pending') . '</span>';
+                    } else {
+                        $orderStatus = "";
+                        $orderStatusElement = '<br><span class="btn btn-success mt-10">' . $filteredData->count() . '/' . $data->count() . ' ' . __('text.Confirmed') . '</span>';
+                    }
+                } else {
+                    if ($key->data_processing) {
+                        $orderStatus = "Processing";
+                        $orderStatusElement = '<span class="btn btn-warning">' . __('text.Processing') . '</span>';
+                    } elseif ($key->data_delivered) {
+                        $orderStatus = "Order Delivered";
+                        $orderStatusElement = '<span class="btn btn-warning">' . __('text.Order Delivered') . '</span>';
+                    } elseif ($key->data_approved) {
+                        $orderStatus = "Order Confirmed";
+                        $orderStatusElement = '<span class="btn btn-warning">' . __('text.Order Confirmed') . '</span>';
+                    } else {
+                        $orderStatus = "Confirmation Pending";
+                        $orderStatusElement = '<span class="btn btn-warning">' . __('text.Confirmation Pending') . '</span>';
+                    }
+                }
+            }
+        }
+
+        // Combine status elements
+        return $statusElement . $orderStatusElement;
+    }
+
+    public function CustomerQuotations()
+    {
+        return view('user.quotations');
     }
 
     private function filterStatus($query, $status)
