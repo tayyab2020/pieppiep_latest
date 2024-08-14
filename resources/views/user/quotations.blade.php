@@ -1114,9 +1114,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                width: 100%;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            } */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1470,6 +1470,67 @@
                 });
                 $('.filter_year, .filter_month, .filter_status').on('change', function() {
                     table.ajax.reload();
+                });
+
+                function filter(page_load = 0) {
+                    // Custom filtering function which will search data in column five between two values
+                    $.fn.dataTable.ext.search.push(
+                        function(settings, data, dataIndex) {
+                            var filter_status = $(".filter_status").val();
+                            var filter_month = $(".filter_month").val();
+                            var filter_year = $(".filter_year").val();
+                            var dateAr = /(\d+)\-(\d+)\-(\d+)/.exec(data[dateColumn]);
+                            var format_start = dateAr[3] + '-' + dateAr[2] + '-' + dateAr[1];
+                            var date = new Date(format_start);
+                            var day = date.getDate();
+                            var month = date.getMonth() + 1;
+                            var year = date.getFullYear().toString();
+                            var status = data[statusColumn];
+                            var order_status = data[orderStatusColumn];
+
+                            month = month > 9 ? "" + month : "0" + month;
+
+                            if (((filter_year == "" && filter_month == "") || ((filter_year && filter_month) && (filter_year == year && filter_month == month)) || (((filter_year && filter_month == "") && (filter_year == year)) || ((filter_month && filter_year == "") && (filter_month == month)))) && ((filter_status == "") || ((filter_status == status) || (filter_status == order_status)))) {
+                                return true;
+                            } else {
+                                return false;
+                            }
+
+                        }
+
+                    );
+
+                    var filter_text = $("#filter_text").val();
+                    table.search(filter_text).draw();
+
+                    if (!page_load) {
+                        var filter_month = $(".filter_month").val();
+                        var filter_year = $(".filter_year").val();
+                        var filter_status = $(".filter_status").val();
+
+                        $.ajax({
+
+                            type: "GET",
+                            data: "filter_text=" + filter_text + "&filter_month=" + filter_month + '&filter_year=' + filter_year + '&filter_status=' + filter_status + '&type=1',
+                            url: "<?php echo route('user-update-filter'); ?>",
+                            success: function(data) {},
+                            error: function(data) {}
+                        });
+                    }
+                }
+
+                $('.dataTables_filter input').on('input', function() {
+                    var value = $(this).val();
+                    $("#filter_text").val(value);
+                    filter();
+                });
+
+                $('.filter_month, .filter_year, .filter_status').on('change', function() {
+                    filter();
+                });
+
+                $(window).on("load", function() {
+                    filter(1);
                 });
             });
         </script>
