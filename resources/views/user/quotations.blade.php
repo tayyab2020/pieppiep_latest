@@ -107,6 +107,23 @@
                                                                 <th class="sorting" tabindex="0" aria-controls="product-table_wrapper" rowspan="1" colspan="1" aria-label="Blood Group: activate to sort column ascending">{{ __('text.Action') }}</th>
                                                             </tr>
                                                         </thead>
+
+                                                        <tfoot>
+                                                            <tr role="row">
+                                                                <th></th>
+                                                                <th></th>
+                                                                @if (Auth::guard('user')->user()->role_id == 2)
+                                                                    <th></th>
+                                                                    <th></th>
+                                                                @endif
+                                                                <th></th>
+                                                                <th></th>
+                                                                @if (Auth::guard('user')->user()->role_id == 2)
+                                                                    <th></th>
+                                                                @endif
+                                                                <th></th>
+                                                            </tr>
+                                                        </tfoot>
                                                     </table>
                                                 </form>
                                             </div>
@@ -1097,9 +1114,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                            width: 100%;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1402,6 +1419,64 @@
 
                         },
 
+                    },
+
+                    footerCallback: function(row, data, start, end, display) {
+                        var api = this.api();
+
+                        // Function to parse and format values
+                        var intVal = function(i) {
+                            if (typeof i === 'string') {
+                                // Remove currency symbols and replace comma with dot
+                                i = i.replace(/[\€]/g, ''); // Remove currency symbol
+                                //i = i.replace(/\./g, ''); // Remove thousands separators (if periods are used)
+                                i = i.replace(/\,/g, ''); // Replace decimal comma with dot
+                            }
+                            return parseFloat(i) || 0; // Convert to float and handle non-numeric values
+                        };
+
+                        // Check the column indexes
+                        var grandTotalIndex = api.column(2).index(); // Adjust selector as needed
+                        var paidIndex = api.column(3).index(); // Adjust selector as needed
+
+                        // Debug column indexes
+                        console.log('Grand Total Column Index:', grandTotalIndex);
+                        console.log('Paid Column Index:', paidIndex);
+
+                        // Calculate page totals for 'grand_total'
+                        var pageTotal = api
+                            .column(grandTotalIndex, {
+                                page: 'current'
+                            })
+                            .data()
+                            .reduce(function(a, b) {
+                                return a + intVal(b);
+                            }, 0).toFixed(2);;
+
+                        // Calculate page totals for 'paid'
+                        var pageTotal1 = api
+                            .column(paidIndex, {
+                                page: 'current'
+                            })
+                            .data()
+                            .reduce(function(a, b) {
+                                return a + intVal(b);
+                            }, 0).toFixed(2);;
+
+                        // Format totals
+                        /*pageTotal = new Intl.NumberFormat('nl-NL', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }).format(pageTotal);
+
+                        pageTotal1 = new Intl.NumberFormat('nl-NL', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }).format(pageTotal1);*/
+
+                        // Update footer
+                        $(api.column(grandTotalIndex).footer()).html('<span style="color: #0097bd;">€ ' + pageTotal + '</span>');
+                        $(api.column(paidIndex).footer()).html('<span style="color: #0097bd;">€ ' + pageTotal1 + '</span>');
                     },
                 });
                 $('.filter_year, .filter_month, .filter_status').on('change', function() {
