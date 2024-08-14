@@ -1114,9 +1114,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    width: 100%;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                } */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1283,7 +1283,7 @@
                     },
                     pageLength: 100,
                     serverSide: true,
-                    stateSave: false,
+                    stateSave: true,
                     ajax: function(data, callback, settings) {
                         // Collect filter values
                         var filters = {
@@ -1436,8 +1436,8 @@
                         };
 
                         // Check the column indexes
-                        var grandTotalIndex = api.column(2).index(); // Adjust selector as needed
-                        var paidIndex = api.column(3).index(); // Adjust selector as needed
+                        var grandTotalIndex = api.column(2).index();
+                        var paidIndex = api.column(3).index();
 
                         // Debug column indexes
                         console.log('Grand Total Column Index:', grandTotalIndex);
@@ -1461,18 +1461,7 @@
                             .data()
                             .reduce(function(a, b) {
                                 return a + intVal(b);
-                            }, 0).toFixed(2);;
-
-                        // Format totals
-                        /*pageTotal = new Intl.NumberFormat('nl-NL', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        }).format(pageTotal);
-
-                        pageTotal1 = new Intl.NumberFormat('nl-NL', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        }).format(pageTotal1);*/
+                            }, 0).toFixed(2);
 
                         // Update footer
                         $(api.column(grandTotalIndex).footer()).html('<span style="color: #0097bd;">€ ' + pageTotal + '</span>');
