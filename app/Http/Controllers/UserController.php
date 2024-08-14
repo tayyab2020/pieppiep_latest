@@ -1152,7 +1152,8 @@ class UserController extends Controller
             ->pluck('id');
 
         // Base query
-        $query = new_quotations::leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
+        $query = new_quotations::query()
+            ->leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
             ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
             ->whereIn('new_quotations.creator_id', $related_users);
 
@@ -1192,8 +1193,8 @@ class UserController extends Controller
             // Role-specific filtering and selection
             if ($user->can('create-new-quotation')) {
                 $new_invoices = $query->where('new_quotations.status', '!=', 3)
-                    ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname')
-                    ->orderBy('new_quotations.created_at', 'desc');
+                    ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname');
+                // ->orderBy('new_quotations.created_at', 'desc');
             } else {
                 $new_invoices = collect(); // Empty collection if no permission
             }
@@ -1213,7 +1214,15 @@ class UserController extends Controller
         }
 
         return DataTables::of($invoices)
-            ->smart(true)
+            ->order(function ($query) use ($request) {
+                $orderColumnIndex = $request->input('order.0.column');
+                $orderDirection = $request->input('order.0.dir');
+                $orderColumnName = $request->input('columns.' . $orderColumnIndex . '.name');
+
+                if ($orderColumnName) {
+                    $query->orderBy($orderColumnName, $orderDirection);
+                }
+            })
             ->addColumn('document_number', function ($key) use ($user) {
                 return '
                         <div style="display: flex; align-items: center;" class="custom-control custom-checkbox mb-3">

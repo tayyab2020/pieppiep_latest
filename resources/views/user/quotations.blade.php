@@ -1093,9 +1093,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                        {
-                                                                                                                                                            width: 100%;
-                                                                                                                                                        } */
+                                                                                                                                                                                                                {
+                                                                                                                                                                                                                    width: 100%;
+                                                                                                                                                                                                                } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1287,20 +1287,23 @@
                     },
                     columns: [{
                             data: 'document_number',
-                            name: 'document_number',
-                            searchable: true
+                            name: 'quotation_invoice_number',
+                            searchable: true,
+                            orderable: true,
                         },
                         @if (Auth::guard('user')->user()->role_id == 4)
                             {
                                 data: 'company_name',
                                 name: 'company_name',
-                                searchable: true
+                                searchable: true,
+                                orderable: true,
                             },
                         @else
                             {
                                 data: 'customer_name',
-                                name: 'customer_name',
-                                searchable: true
+                                name: 'quote_name',
+                                searchable: true,
+                                orderable: true,
                             },
                         @endif
 
@@ -1308,25 +1311,32 @@
                             {
                                 data: 'grand_total',
                                 name: 'grand_total',
-                                searchable: true
+                                searchable: true,
+                                orderable: true,
                             }, {
                                 data: 'paid',
                                 name: 'paid',
-                                searchable: true
+                                searchable: true,
+                                orderable: true,
                             },
                         @endif {
                             data: 'all_status_elements',
-                            name: 'all_status_elements',
-                            searchable: true
+                            name: 'status',
+                            searchable: true,
+                            orderable: true,
                         },
                         {
                             data: 'date1',
-                            name: 'date1'
+                            name: 'invoice_date',
+                            searchable: true,
+                            orderable: true,
                         },
                         @if (Auth::guard('user')->user()->role_id == 2)
                             {
                                 data: 'regards',
-                                name: 'regards'
+                                name: 'regards',
+                                orderable: true,
+                                searchable: true
                             },
                         @endif {
                             data: 'action',
