@@ -1092,10 +1092,14 @@
             line-height: 1;
         }
 
+        table.dataTable thead .sorting.sorting_disabled:after {
+            content: "";
+        }
+
         /* td span.btn
-                                                                                                                                                                                                                {
-                                                                                                                                                                                                                    width: 100%;
-                                                                                                                                                                                                                } */
+                                                                                                                                                                                                                            {
+                                                                                                                                                                                                                                width: 100%;
+                                                                                                                                                                                                                            } */
     </style>
     <style>
         @media (min-width: 768px) {

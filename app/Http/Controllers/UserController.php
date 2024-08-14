@@ -121,6 +121,7 @@ use App\employees_details;
 use App\universal_customers_details;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
@@ -1155,6 +1156,13 @@ class UserController extends Controller
         $query = new_quotations::query()
             ->leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
             ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
+            ->leftJoin(DB::raw('(
+                SELECT quotation_id,
+                       SUM(amount) AS total_paid
+                FROM payment_calculations
+                WHERE paid_by != "Pending"
+                GROUP BY quotation_id
+            ) as payment_summaries'), 'payment_summaries.quotation_id', '=', 'new_quotations.id')
             ->whereIn('new_quotations.creator_id', $related_users);
 
         // Apply filters
@@ -1219,7 +1227,9 @@ class UserController extends Controller
                 $orderDirection = $request->input('order.0.dir');
                 $orderColumnName = $request->input('columns.' . $orderColumnIndex . '.name');
 
-                if ($orderColumnName) {
+                if ($orderColumnName == 'paid') {
+                    $query->orderBy('payment_summaries.total_paid', $orderDirection);
+                } elseif ($orderColumnName) {
                     $query->orderBy($orderColumnName, $orderDirection);
                 }
             })
