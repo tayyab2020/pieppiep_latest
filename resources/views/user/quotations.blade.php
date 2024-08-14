@@ -1097,9 +1097,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                width: 100%;
-                                                                                                                                                                                                                            } */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1266,6 +1266,7 @@
                     },
                     pageLength: 100,
                     serverSide: true,
+                    stateSave: false,
                     ajax: function(data, callback, settings) {
                         // Collect filter values
                         var filters = {
@@ -1355,25 +1356,53 @@
                     order: [
                         [dateColumn, 'desc']
                     ],
-                    drawCallback: function(settings) {
-                        var api = this.api();
-                        var rows = api.rows({
-                            page: 'current'
-                        }).nodes();
-                        var last = null;
 
-                        api.column(5, {
-                            page: 'current'
-                        }).data().each(function(date1, i) {
-                            if (last !== date1) {
-                                $(rows).eq(i).before(
-                                    '<tr class="group"><td colspan="8"><strong>' + date1 + '</strong></td></tr>'
-                                );
+                    rowGroup: {
+                        dataSrc: ['date1'],
+                        startRender: function(rows, group) {
+                            return $('<tr/>')
+                                .append('<td colspan="7">' + group + '</td>')
+                                .append('<td/>');
 
-                                last = date1;
-                            }
-                        });
-                    }
+                        },
+                        endRender: function(rows, group) {
+                            var grand_total_t = rows
+                                .data()
+                                .pluck('grand_total')
+                                .reduce(function(a, b) {
+                                    if (b) {
+                                        b = b.replace(/[\€]/g, ''); // Remove currency symbol if present
+                                        //b = b.replace(/\./g, ''); // Remove thousands separators
+                                        b = b.replace(/\,/g, ''); // Replace decimal comma with dot
+                                        return a + parseFloat(b) || 0; // Convert to float and accumulate
+                                    }
+                                    return a;
+                                }, 0);
+                            grand_total_t = grand_total_t.toFixed(2);
+
+                            var paid_total = rows
+                                .data()
+                                .pluck('paid')
+                                .reduce(function(a, b) {
+                                    if (b) {
+                                        b = b.replace(/[\€]/g, ''); // Remove currency symbol if present
+                                        //b = b.replace(/\./g, ''); // Remove thousands separators
+                                        b = b.replace(/\,/g, ''); // Replace decimal comma with dot
+                                        return a + parseFloat(b) || 0; // Convert to float and accumulate
+                                    }
+                                    return a;
+                                }, 0);
+                            paid_total = paid_total.toFixed(2);
+
+                            return $('<tr/>')
+                                .append('<td colspan="2" style="color: #0097bd;">Group Totals</td>')
+                                .append('<td style="color: #0097bd;">€ ' + grand_total_t + '</td>')
+                                .append('<td colspan="4" style="color: #0097bd;">€ ' + paid_total + '</td>')
+                                .append('<td/>');
+
+                        },
+
+                    },
                 });
                 $('.filter_year, .filter_month, .filter_status').on('change', function() {
                     table.ajax.reload();

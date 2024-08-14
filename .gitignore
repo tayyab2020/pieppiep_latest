@@ -35,3 +35,4 @@ yarn-error.log
 /nodejs/media
 storage/fonts/installed-fonts.json
 app/product_models copy.php
+resources/views/user/quotations.blade copy 2.php
