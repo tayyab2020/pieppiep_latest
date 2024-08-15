@@ -1181,7 +1181,8 @@ class UserController extends Controller
                 ->where('new_quotations.finished', 1)
                 // ->orderBy('new_quotations.created_at', 'desc')
                 ->select('organizations.company_name', 'new_quotations.status', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.id as invoice_id', 'new_orders.order_sent', 'new_orders.id as data_id', 'new_quotations.created_at as invoice_date', 'new_orders.order_number', 'new_orders.approved as data_approved', 'new_orders.processing as data_processing', 'new_orders.delivered as data_delivered')
-                ->with('invoices', 'payment_calculations');
+                ->with('invoices', 'payment_calculations')
+                ->groupBy('quotation_invoice_number');
         }
 
         // Apply filters
