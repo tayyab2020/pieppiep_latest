@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ShopController;
 
 // Subdomain routes
-Route::domain('{shop}.' . env('APP_URL'))->group(function () {
+Route::domain('{shop}.'.config('app.url'))->group(function () {
     Route::get('/', [ShopController::class, 'index'])->name('shop.home');
     Route::get('shopproduct/{id}', [ShopController::class, 'showProduct'])->name('product.show');
 });
