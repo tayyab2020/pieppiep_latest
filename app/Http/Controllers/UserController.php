@@ -1147,61 +1147,25 @@ class UserController extends Controller
         $user_id = $user->id;
         $user_role = $user->role_id;
         $organization_id = $user->organization->id;
-        $related_users = \App\User::join('user_organizations', 'user_organizations.user_id', '=', 'users.id')
-            ->where('user_organizations.organization_id', $organization_id)
-            ->select('users.id')
-            ->pluck('id');
-
-        // Base query
-        $query = new_quotations::query()
-            ->leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
-            ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
-            ->leftJoin(DB::raw('(
-                SELECT quotation_id,
-                       SUM(amount) AS total_paid
-                FROM payment_calculations
-                WHERE paid_by != "Pending"
-                GROUP BY quotation_id
-            ) as payment_summaries'), 'payment_summaries.quotation_id', '=', 'new_quotations.id')
-            ->whereIn('new_quotations.creator_id', $related_users);
-
-        // Apply filters
-        if ($request->filled('year')) {
-            $query->whereYear('new_quotations.created_at', $request->year);
-        }
-
-        if ($request->filled('month')) {
-            $query->whereMonth('new_quotations.created_at', $request->month);
-        }
-
-        if ($request->filled('status')) {
-            $this->filterStatus($query, $request->status);
-        }
-
-        if ($keyword = $request->input('search.value')) {
-            $s_statuses = ucwords($request->input('search.value'));
-            if (in_array($s_statuses, ['Pending', 'Draft', 'Waiting For Approval', 'Quotation Sent', 'Asking for Review', 'Quotation Accepted', 'Payment Pending', 'Paid', 'Invoice Generated', 'Goods Delivered', 'Goods Received', 'Closed', 'Order Processing', 'Processing', 'Order Delivered', 'Order Confirmed', 'Confirmation Pending'])) {
-                $this->filterStatus($query, $s_statuses);
-            } else {
-                $date_f = date('Y-m-d', strtotime($keyword));
-                $keyword = '%' . $keyword . '%';
-                $query->where(function ($query) use ($keyword, $date_f) {
-                    $query->where('quotes.quote_name', 'LIKE', $keyword)
-                        ->orWhere('quotes.quote_familyname', 'LIKE', $keyword)
-                        ->orWhere('new_quotations.grand_total', 'LIKE', $keyword)
-                        ->orWhere('customers_details.name', 'LIKE', $keyword)
-                        ->orWhere('customers_details.family_name', 'LIKE', $keyword)
-                        ->orWhere('new_quotations.quotation_invoice_number', 'LIKE', $keyword)
-                        ->orWhereDate('new_quotations.created_at', $date_f);
-                });
-            }
-        }
+        $organization = organizations::findOrFail($organization_id);
+        $related_users = $organization->users()->withTrashed()->select('users.id')->pluck('id');
 
         if ($user_role == 2) {
             // Role-specific filtering and selection
             if ($user->can('create-new-quotation')) {
-                $new_invoices = $query->where('new_quotations.status', '!=', 3)
-                    ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname');
+                $new_invoices = new_quotations::query()
+                ->leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
+                ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
+                ->leftJoin(DB::raw('(
+                    SELECT quotation_id,
+                           SUM(amount) AS total_paid
+                    FROM payment_calculations
+                    WHERE paid_by != "Pending"
+                    GROUP BY quotation_id
+                ) as payment_summaries'), 'payment_summaries.quotation_id', '=', 'new_quotations.id')
+                ->whereIn('new_quotations.creator_id', $related_users)
+                ->where('new_quotations.status', '!=', 3)
+                ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname');
                 // ->orderBy('new_quotations.created_at', 'desc');
             } else {
                 $new_invoices = collect(); // Empty collection if no permission
@@ -1209,20 +1173,61 @@ class UserController extends Controller
             $invoices = $new_invoices;
         } else {
             // Handle the case for non-role 2 users
-            $invoices = $query->leftJoin('new_orders', 'new_orders.quotation_id', '=', 'new_quotations.id')
-                ->leftJoin('organizations', 'organizations.id', '=', 'new_orders.supplier_id')
-                ->whereNull('new_orders.deleted_at')
-                ->where('new_orders.supplier_id', $organization_id)
-                ->where('new_quotations.finished', 1)
-                ->orderBy('new_quotations.created_at', 'desc')
-                ->select('organizations.company_name', 'new_quotations.*', 'new_orders.order_sent', 'new_orders.id as data_id', 'new_orders.order_number', 'new_orders.approved as data_approved', 'new_orders.processing as data_processing', 'new_orders.delivered as data_delivered')
-                ->with('invoices', 'payment_calculations')
-                ->get()
-                ->unique('invoice_id');
+            $invoices = new_quotations::query()
+            ->leftjoin('new_orders', 'new_orders.quotation_id', '=', 'new_quotations.id')
+            ->leftJoin('organizations', 'organizations.id', '=', 'new_orders.supplier_id')
+            ->whereNull('new_orders.deleted_at')
+            ->where('new_orders.supplier_id', $organization_id)
+            ->where('new_quotations.finished', 1)
+            // ->orderBy('new_quotations.created_at', 'desc')
+            ->select('organizations.company_name', 'new_quotations.status', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.id as invoice_id', 'new_orders.order_sent', 'new_orders.id as data_id', 'new_quotations.created_at as invoice_date', 'new_orders.order_number', 'new_orders.approved as data_approved', 'new_orders.processing as data_processing', 'new_orders.delivered as data_delivered')
+            ->with('invoices', 'payment_calculations');
+        }
+
+        // Apply filters
+        if ($request->filled('year')) {
+            $invoices->whereYear('new_quotations.created_at', $request->year);
+        }
+
+        if ($request->filled('month')) {
+            $invoices->whereMonth('new_quotations.created_at', $request->month);
+        }
+
+        if ($request->filled('status')) {
+            $this->filterStatus($invoices, $request->status);
+        }
+
+        if ($keyword = $request->input('search.value')) {
+            $s_statuses = ucwords($request->input('search.value'));
+            if (in_array($s_statuses, ['Pending', 'Draft', 'Waiting For Approval', 'Quotation Sent', 'Asking for Review', 'Quotation Accepted', 'Payment Pending', 'Paid', 'Invoice Generated', 'Goods Delivered', 'Goods Received', 'Closed', 'Order Processing', 'Processing', 'Order Delivered', 'Order Confirmed', 'Confirmation Pending'])) {
+                $this->filterStatus($invoices, $s_statuses);
+            } else {
+                $date_f = date('Y-m-d', strtotime($keyword));
+                $keyword = '%' . $keyword . '%';
+                $invoices->where(function ($invoices) use ($keyword, $date_f, $user_role) {
+
+                    if ($user_role == 2)
+                    {
+                        $invoices = $invoices->where('quotes.quote_name', 'LIKE', $keyword)
+                        ->orWhere('quotes.quote_familyname', 'LIKE', $keyword)
+                        ->orWhere('customers_details.name', 'LIKE', $keyword)
+                        ->orWhere('customers_details.family_name', 'LIKE', $keyword)
+                        ->orWhere('new_quotations.quotation_invoice_number', 'LIKE', $keyword)
+                        ->orWhere('new_quotations.grand_total', 'LIKE', $keyword);
+                    }
+                    else
+                    {
+                        $invoices = $invoices->where('new_orders.order_number', 'LIKE', $keyword)
+                        ->orWhere('new_quotations.company_name', 'LIKE', $keyword);
+                    }
+                    
+                    $invoices = $invoices->orWhereDate('new_quotations.created_at', $date_f);
+                });
+            }
         }
 
         return DataTables::of($invoices)
-            ->order(function ($query) use ($request) {
+            ->order(function ($query) use ($request, $user) {
                 $orderColumnIndex = $request->input('order.0.column');
                 $orderDirection = $request->input('order.0.dir');
                 $orderColumnName = $request->input('columns.' . $orderColumnIndex . '.name');
@@ -1234,6 +1239,10 @@ class UserController extends Controller
                 }
             })
             ->addColumn('document_number', function ($key) use ($user) {
+                if($user->role_id == 4)
+                {
+                    return '<a href="">OR# '.$key->order_number.'</a>';
+                }
                 return '
                         <div style="display: flex; align-items: center;" class="custom-control custom-checkbox mb-3">
                             <input type="checkbox" style="margin: 0;" class="custom-control-input" id="customCheck' . $key->id . '">
@@ -1242,10 +1251,18 @@ class UserController extends Controller
                             <label style="margin: 0 0 0 5px; font-weight: 500;" class="custom-control-label" for="customCheck' . $key->id . '">OF# ' . $key->quotation_invoice_number . '</label>
                         </div>';
             })
-            ->addColumn('customer_name', function ($key) {
-                return $key->quote_request_id ? ($key->paid ? $key->quote_name . ' ' . $key->quote_familyname : 'vloerofferte.nl') : $key->name . ' ' . $key->family_name;
+            ->addColumn('customer_name', function ($key) use($user) {
+                if($user->role_id == 2)
+                {
+                    return $key->quote_request_id ? ($key->paid ? $key->quote_name . ' ' . $key->quote_familyname : 'vloerofferte.nl') : $key->name . ' ' . $key->family_name;
+                }
+                else
+                {
+                    return $key->company_name;
+                }
             })
-            ->addColumn('grand_total', function ($key) {
+            ->addColumn('grand_total', function ($key) use($user) {
+                if ($user->role_id != 2) return '';
                 return "€ " . number_format((float)$key->grand_total, 2);
             })
             ->addColumn('paid', function ($key) use ($user) {
@@ -1273,7 +1290,7 @@ class UserController extends Controller
                         </ul>
                     </div>';
             })
-            ->rawColumns(['document_number', 'customer_name', 'grand_total', 'paid', 'all_status_elements', 'regards', 'status', 'order_status', 'action'])
+            ->rawColumns(['document_number', 'customer_name', 'grand_total', 'paid', 'all_status_elements', 'regards', 'action'])
             ->make(true);
     }
 
@@ -1394,54 +1411,57 @@ class UserController extends Controller
         $statusElement = "";
         $orderStatusElement = "";
 
-        // Determine status element based on the quotation status
-        switch ($key->status) {
-            case 3:
-                if ($key->received) {
-                    $status = "Goods Received";
-                    $statusElement = '<span class="btn btn-success">' . __('text.Goods Received') . '</span>';
-                } elseif ($key->delivered) {
-                    $status = "Goods Delivered";
-                    $statusElement = '<span class="btn btn-success">' . __('text.Goods Delivered') . '</span>';
-                } else {
-                    $status = "Invoice Generated";
-                    $statusElement = '<span class="btn btn-success">' . __('text.Invoice Generated') . '</span>';
-                }
-                break;
-            case 2:
-                if ($key->accepted) {
-                    if (!$key->quote_request_id) {
-                        $status = "Quotation Accepted";
-                        $statusElement = '<span class="btn btn-primary1">' . __('text.Quotation Accepted') . '</span>';
+        if($user->role_id == 2)
+        {
+            // Determine status element based on the quotation status
+            switch ($key->status) {
+                case 3:
+                    if ($key->received) {
+                        $status = "Goods Received";
+                        $statusElement = '<span class="btn btn-success">' . __('text.Goods Received') . '</span>';
+                    } elseif ($key->delivered) {
+                        $status = "Goods Delivered";
+                        $statusElement = '<span class="btn btn-success">' . __('text.Goods Delivered') . '</span>';
                     } else {
-                        $status = $key->paid ? "Paid" : "Payment Pending";
-                        $statusElement = '<span class="btn ' . ($key->paid ? 'btn-success' : 'btn-primary1') . '">' . __($key->paid ? 'text.Paid' : 'text.Payment Pending') . '</span>';
+                        $status = "Invoice Generated";
+                        $statusElement = '<span class="btn btn-success">' . __('text.Invoice Generated') . '</span>';
                     }
-                } else {
-                    $status = "Closed";
-                    $statusElement = '<span class="btn btn-success">' . __('text.Closed') . '</span>';
-                }
-                break;
-            default:
-                if ($key->ask_customization) {
-                    $status = "Asking for Review";
-                    $statusElement = '<span class="btn btn-info">' . __('text.Asking for Review') . '</span>';
-                } elseif ($key->approved) {
-                    $status = "Quotation Sent";
-                    $statusElement = '<span class="btn btn-success">' . __('text.Quotation Sent') . '</span>';
-                } else {
-                    if ($key->quote_request_id && $key->admin_quotation_sent) {
-                        $status = "Waiting For Approval";
-                        $statusElement = '<span class="btn btn-info">' . __('text.Waiting For Approval') . '</span>';
-                    } elseif ($key->draft) {
-                        $status = "Draft";
-                        $statusElement = '<span class="btn btn-info">' . __('text.Draft') . '</span>';
+                    break;
+                case 2:
+                    if ($key->accepted) {
+                        if (!$key->quote_request_id) {
+                            $status = "Quotation Accepted";
+                            $statusElement = '<span class="btn btn-primary1">' . __('text.Quotation Accepted') . '</span>';
+                        } else {
+                            $status = $key->paid ? "Paid" : "Payment Pending";
+                            $statusElement = '<span class="btn ' . ($key->paid ? 'btn-success' : 'btn-primary1') . '">' . __($key->paid ? 'text.Paid' : 'text.Payment Pending') . '</span>';
+                        }
                     } else {
-                        $status = "Pending";
-                        $statusElement = '<span class="btn btn-warning">' . __('text.Pending') . '</span>';
+                        $status = "Closed";
+                        $statusElement = '<span class="btn btn-success">' . __('text.Closed') . '</span>';
                     }
-                }
-                break;
+                    break;
+                default:
+                    if ($key->ask_customization) {
+                        $status = "Asking for Review";
+                        $statusElement = '<span class="btn btn-info">' . __('text.Asking for Review') . '</span>';
+                    } elseif ($key->approved) {
+                        $status = "Quotation Sent";
+                        $statusElement = '<span class="btn btn-success">' . __('text.Quotation Sent') . '</span>';
+                    } else {
+                        if ($key->quote_request_id && $key->admin_quotation_sent) {
+                            $status = "Waiting For Approval";
+                            $statusElement = '<span class="btn btn-info">' . __('text.Waiting For Approval') . '</span>';
+                        } elseif ($key->draft) {
+                            $status = "Draft";
+                            $statusElement = '<span class="btn btn-info">' . __('text.Draft') . '</span>';
+                        } else {
+                            $status = "Pending";
+                            $statusElement = '<span class="btn btn-warning">' . __('text.Pending') . '</span>';
+                        }
+                    }
+                    break;
+            }
         }
 
         // Determine order status element
@@ -1498,12 +1518,37 @@ class UserController extends Controller
         }
 
         // Combine status elements
-        return $statusElement . $orderStatusElement;
+        return $user->role_id == 2 ? $statusElement . $orderStatusElement : $orderStatusElement;
     }
 
     public function CustomerQuotations()
     {
-        return view('user.quotations');
+        $user = Auth::guard('user')->user();
+        $user_id = $user->id;
+        $user_role = $user->role_id;
+        $organization_id = $user->organization->id;
+        $organization = organizations::findOrFail($organization_id);
+        $related_users = $organization->users()->withTrashed()->select('users.id')->pluck('id');
+
+        $earliestYear = "";
+        
+        if ($user_role == 2) {
+            // Role-specific filtering and selection
+            if ($user->can('create-new-quotation')) {
+
+                $earliestYear = new_quotations::whereIn('creator_id', $related_users)
+                ->where('new_quotations.status', '!=', 3)
+                ->selectRaw('YEAR(MIN(new_quotations.created_at)) as earliest_year')
+                ->value('earliest_year');
+
+            } else {
+                $earliestYear = "";
+            }
+        }
+
+        $earliestYear = $earliestYear ? $earliestYear : date('Y');
+
+        return view('user.quotations', compact("earliestYear"));
     }
 
     private function filterStatus($query, $status)
@@ -1881,7 +1926,7 @@ class UserController extends Controller
         $user_id = $user->id;
 
         if ($request->type == 1) {
-            $update = array("filter_text" => $request->filter_text, "filter_month" => $request->filter_month, "filter_year" => $request->filter_year, "filter_status" => $request->filter_status);
+            $update = array("filter_month" => $request->filter_month, "filter_year" => $request->filter_year, "filter_status" => $request->filter_status);
         } else {
             $update = array("filter_text_invoice" => $request->filter_text, "filter_month_invoice" => $request->filter_month, "filter_year_invoice" => $request->filter_year);
         }

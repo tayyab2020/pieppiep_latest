@@ -35,17 +35,14 @@
                                         <div class="row">
                                             <div class="col-sm-12">
                                                 @if (Auth::guard('user')->user()->role_id == 2)
-                                                    <input value="{{ Auth::guard('user')->user()->filter_text }}" type="hidden" name="filter_text" id="filter_text">
+
                                                     <div style="display: flex;margin: 10px 0 20px 0;" class="row filters_row">
                                                         <div style="display: flex;justify-content: center;padding: 0 10px;">
                                                             <div style="margin: 0;" class="form-group">
                                                                 <select style="min-width: 125px;" class="form-control filter_year">
                                                                     <option value="">{{ __('text.All Years') }}</option>
-                                                                    {{-- @for ($y = date('Y', strtotime($invoices->min('invoice_date'))); $y <= date('Y'); $y++)
-                                                                        <option {{ Auth::guard('user')->user()->filter_year == $y ? 'selected' : null }} value="{{ $y }}">{{ $y }}</option>
-                                                                    @endfor --}}
 
-                                                                    @for ($y = date('Y') - 5; $y <= date('Y') + 1; $y++)
+                                                                    @for ($y = $earliestYear; $y <= date('Y'); $y++)
                                                                         <option {{ Auth::guard('user')->user()->filter_year == $y ? 'selected' : null }} value="{{ $y }}">{{ $y }}</option>
                                                                     @endfor
 
@@ -87,7 +84,9 @@
                                                             </div>
                                                         </div>
                                                     </div>
+
                                                 @endif
+                                                
                                                 <form id="quotations-delete-form" method="POST" action="{{ route('quotations-delete-post') }}">
                                                     <input type="hidden" id="token" name="_token" value="{{ @csrf_token() }}">
                                                     <table id="example" class="table table-striped table-hover products dt-responsive dataTable no-footer dtr-inline" role="grid" aria-describedby="product-table_wrapper_info" cellspacing="0">
@@ -108,22 +107,22 @@
                                                             </tr>
                                                         </thead>
 
-                                                        <tfoot>
-                                                            <tr role="row">
-                                                                <th></th>
-                                                                <th></th>
-                                                                @if (Auth::guard('user')->user()->role_id == 2)
+                                                        @if(Auth::guard('user')->user()->role_id == 2)
+    
+                                                            <tfoot>
+                                                                <tr>
                                                                     <th></th>
                                                                     <th></th>
-                                                                @endif
-                                                                <th></th>
-                                                                <th></th>
-                                                                @if (Auth::guard('user')->user()->role_id == 2)
+                                                                    <th style="text-align: left;"></th>
                                                                     <th></th>
-                                                                @endif
-                                                                <th></th>
-                                                            </tr>
-                                                        </tfoot>
+                                                                    <th></th>
+                                                                    <th></th>
+                                                                    <th></th>
+                                                                    <th></th>
+                                                                </tr>
+                                                            </tfoot>
+    
+                                                        @endif
                                                     </table>
                                                 </form>
                                             </div>
@@ -1267,7 +1266,11 @@
                 var screen_width = $(window).width();
                 var tableId = 'example';
                 var table;
+                @if (Auth::guard('user')->user()->role_id == 2)
                 var dateColumn = 5;
+                @else
+                var dateColumn = 3;
+                @endif
                 var statusColumn = 4;
                 var orderStatusColumn = 6;
                 var amountColumn = 2;
@@ -1373,7 +1376,8 @@
                     order: [
                         [dateColumn, 'desc']
                     ],
-
+                    @if (Auth::guard('user')->user()->role_id == 2)
+                    
                     rowGroup: {
                         dataSrc: ['date1'],
                         startRender: function(rows, group) {
@@ -1420,7 +1424,10 @@
                         },
 
                     },
+                    @endif
 
+                    @if (Auth::guard('user')->user()->role_id == 2)
+                    
                     footerCallback: function(row, data, start, end, display) {
                         var api = this.api();
 
@@ -1464,44 +1471,42 @@
                             }, 0).toFixed(2);
 
                         // Update footer
-                        $(api.column(grandTotalIndex).footer()).html('<span style="color: #0097bd;">€ ' + pageTotal + '</span>');
-                        $(api.column(paidIndex).footer()).html('<span style="color: #0097bd;">€ ' + pageTotal1 + '</span>');
+                        $(api.column(grandTotalIndex).footer()).html('€ ' + pageTotal);
+                        $(api.column(paidIndex).footer()).html('€ ' + pageTotal1);
                     },
-                });
-                $('.filter_year, .filter_month, .filter_status').on('change', function() {
-                    table.ajax.reload();
+                    @endif
                 });
 
                 function filter(page_load = 0) {
                     // Custom filtering function which will search data in column five between two values
-                    $.fn.dataTable.ext.search.push(
-                        function(settings, data, dataIndex) {
-                            var filter_status = $(".filter_status").val();
-                            var filter_month = $(".filter_month").val();
-                            var filter_year = $(".filter_year").val();
-                            var dateAr = /(\d+)\-(\d+)\-(\d+)/.exec(data[dateColumn]);
-                            var format_start = dateAr[3] + '-' + dateAr[2] + '-' + dateAr[1];
-                            var date = new Date(format_start);
-                            var day = date.getDate();
-                            var month = date.getMonth() + 1;
-                            var year = date.getFullYear().toString();
-                            var status = data[statusColumn];
-                            var order_status = data[orderStatusColumn];
+                    // $.fn.dataTable.ext.search.push(
+                    //     function(settings, data, dataIndex) {
+                    //         var filter_status = $(".filter_status").val();
+                    //         var filter_month = $(".filter_month").val();
+                    //         var filter_year = $(".filter_year").val();
+                    //         var dateAr = /(\d+)\-(\d+)\-(\d+)/.exec(data[dateColumn]);
+                    //         var format_start = dateAr[3] + '-' + dateAr[2] + '-' + dateAr[1];
+                    //         var date = new Date(format_start);
+                    //         var day = date.getDate();
+                    //         var month = date.getMonth() + 1;
+                    //         var year = date.getFullYear().toString();
+                    //         var status = data[statusColumn];
+                    //         var order_status = data[orderStatusColumn];
 
-                            month = month > 9 ? "" + month : "0" + month;
+                    //         month = month > 9 ? "" + month : "0" + month;
 
-                            if (((filter_year == "" && filter_month == "") || ((filter_year && filter_month) && (filter_year == year && filter_month == month)) || (((filter_year && filter_month == "") && (filter_year == year)) || ((filter_month && filter_year == "") && (filter_month == month)))) && ((filter_status == "") || ((filter_status == status) || (filter_status == order_status)))) {
-                                return true;
-                            } else {
-                                return false;
-                            }
+                    //         if (((filter_year == "" && filter_month == "") || ((filter_year && filter_month) && (filter_year == year && filter_month == month)) || (((filter_year && filter_month == "") && (filter_year == year)) || ((filter_month && filter_year == "") && (filter_month == month)))) && ((filter_status == "") || ((filter_status == status) || (filter_status == order_status)))) {
+                    //             return true;
+                    //         } else {
+                    //             return false;
+                    //         }
 
-                        }
+                    //     }
 
-                    );
+                    // );
 
-                    var filter_text = $("#filter_text").val();
-                    table.search(filter_text).draw();
+                    // var filter_text = $("#filter_text").val();
+                    // table.search(filter_text).draw();
 
                     if (!page_load) {
                         var filter_month = $(".filter_month").val();
@@ -1511,17 +1516,17 @@
                         $.ajax({
 
                             type: "GET",
-                            data: "filter_text=" + filter_text + "&filter_month=" + filter_month + '&filter_year=' + filter_year + '&filter_status=' + filter_status + '&type=1',
+                            data: "filter_month=" + filter_month + '&filter_year=' + filter_year + '&filter_status=' + filter_status + '&type=1',
                             url: "<?php echo route('user-update-filter'); ?>",
                             success: function(data) {},
                             error: function(data) {}
                         });
+
+                        table.ajax.reload();
                     }
                 }
 
                 $('.dataTables_filter input').on('input', function() {
-                    var value = $(this).val();
-                    $("#filter_text").val(value);
                     filter();
                 });
 
