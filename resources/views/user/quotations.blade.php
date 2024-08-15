@@ -1113,9 +1113,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            width: 100%;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1224,14 +1224,14 @@
                 $(document).on('click', '.accept-btn', function() {
                     var href = $(this).data("href");
                     Swal.fire({
-                        title: 'Are you sure?',
-                        text: 'Are you sure you want to accept this quote?',
+                        title: '{{ __('text.Are you sure?') }}',
+                        text: '{{ __('text.Are you sure you want to accept this quote') }}',
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#3085d6',
                         cancelButtonColor: '#d33',
-                        confirmButtonText: 'Yes!',
-                        cancelButtonText: 'Cancel',
+                        confirmButtonText: '{{ __('text.Yes') }}!',
+                        cancelButtonText: '{{ __('text.Cancel') }}',
                     }).then((result) => {
                         if (result.isConfirmed) {
                             window.location.href = href;
