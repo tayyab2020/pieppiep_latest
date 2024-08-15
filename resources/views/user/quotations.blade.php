@@ -35,7 +35,6 @@
                                         <div class="row">
                                             <div class="col-sm-12">
                                                 @if (Auth::guard('user')->user()->role_id == 2)
-
                                                     <div style="display: flex;margin: 10px 0 20px 0;" class="row filters_row">
                                                         <div style="display: flex;justify-content: center;padding: 0 10px;">
                                                             <div style="margin: 0;" class="form-group">
@@ -84,9 +83,8 @@
                                                             </div>
                                                         </div>
                                                     </div>
-
                                                 @endif
-                                                
+
                                                 <form id="quotations-delete-form" method="POST" action="{{ route('quotations-delete-post') }}">
                                                     <input type="hidden" id="token" name="_token" value="{{ @csrf_token() }}">
                                                     <table id="example" class="table table-striped table-hover products dt-responsive dataTable no-footer dtr-inline" role="grid" aria-describedby="product-table_wrapper_info" cellspacing="0">
@@ -107,8 +105,7 @@
                                                             </tr>
                                                         </thead>
 
-                                                        @if(Auth::guard('user')->user()->role_id == 2)
-    
+                                                        @if (Auth::guard('user')->user()->role_id == 2)
                                                             <tfoot>
                                                                 <tr>
                                                                     <th></th>
@@ -121,7 +118,6 @@
                                                                     <th></th>
                                                                 </tr>
                                                             </tfoot>
-    
                                                         @endif
                                                     </table>
                                                 </form>
@@ -1113,9 +1109,9 @@
         }
 
         /* td span.btn
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                width: 100%;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            } */
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            width: 100%;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } */
     </style>
     <style>
         @media (min-width: 768px) {
@@ -1267,9 +1263,9 @@
                 var tableId = 'example';
                 var table;
                 @if (Auth::guard('user')->user()->role_id == 2)
-                var dateColumn = 5;
+                    var dateColumn = 5;
                 @else
-                var dateColumn = 3;
+                    var dateColumn = 3;
                 @endif
                 var statusColumn = 4;
                 var orderStatusColumn = 6;
@@ -1313,21 +1309,21 @@
                     columns: [{
                             data: 'document_number',
                             name: 'quotation_invoice_number',
-                            searchable: true,
+                            searchable: false,
                             orderable: true,
                         },
                         @if (Auth::guard('user')->user()->role_id == 4)
                             {
                                 data: 'company_name',
                                 name: 'company_name',
-                                searchable: true,
+                                searchable: false,
                                 orderable: true,
                             },
                         @else
                             {
                                 data: 'customer_name',
                                 name: 'quote_name',
-                                searchable: true,
+                                searchable: false,
                                 orderable: true,
                             },
                         @endif
@@ -1336,24 +1332,24 @@
                             {
                                 data: 'grand_total',
                                 name: 'grand_total',
-                                searchable: true,
+                                searchable: false,
                                 orderable: true,
                             }, {
                                 data: 'paid',
                                 name: 'paid',
-                                searchable: true,
+                                searchable: false,
                                 orderable: true,
                             },
                         @endif {
                             data: 'all_status_elements',
                             name: 'status',
-                            searchable: true,
+                            searchable: false,
                             orderable: true,
                         },
                         {
                             data: 'date1',
                             name: 'invoice_date',
-                            searchable: true,
+                            searchable: false,
                             orderable: true,
                         },
                         @if (Auth::guard('user')->user()->role_id == 2)
@@ -1361,7 +1357,7 @@
                                 data: 'regards',
                                 name: 'regards',
                                 orderable: true,
-                                searchable: true
+                                searchable: false
                             },
                         @endif {
                             data: 'action',
@@ -1377,103 +1373,103 @@
                         [dateColumn, 'desc']
                     ],
                     @if (Auth::guard('user')->user()->role_id == 2)
-                    
-                    rowGroup: {
-                        dataSrc: ['date1'],
-                        startRender: function(rows, group) {
-                            return $('<tr/>')
-                                .append('<td colspan="7">' + group + '</td>')
-                                .append('<td/>');
+
+                        rowGroup: {
+                            dataSrc: ['date1'],
+                            startRender: function(rows, group) {
+                                return $('<tr/>')
+                                    .append('<td colspan="7">' + group + '</td>')
+                                    .append('<td/>');
+
+                            },
+                            endRender: function(rows, group) {
+                                var grand_total_t = rows
+                                    .data()
+                                    .pluck('grand_total')
+                                    .reduce(function(a, b) {
+                                        if (b) {
+                                            b = b.replace(/[\€]/g, ''); // Remove currency symbol if present
+                                            //b = b.replace(/\./g, ''); // Remove thousands separators
+                                            b = b.replace(/\,/g, ''); // Replace decimal comma with dot
+                                            return a + parseFloat(b) || 0; // Convert to float and accumulate
+                                        }
+                                        return a;
+                                    }, 0);
+                                grand_total_t = grand_total_t.toFixed(2);
+
+                                var paid_total = rows
+                                    .data()
+                                    .pluck('paid')
+                                    .reduce(function(a, b) {
+                                        if (b) {
+                                            b = b.replace(/[\€]/g, ''); // Remove currency symbol if present
+                                            //b = b.replace(/\./g, ''); // Remove thousands separators
+                                            b = b.replace(/\,/g, ''); // Replace decimal comma with dot
+                                            return a + parseFloat(b) || 0; // Convert to float and accumulate
+                                        }
+                                        return a;
+                                    }, 0);
+                                paid_total = paid_total.toFixed(2);
+
+                                return $('<tr/>')
+                                    .append('<td colspan="2" style="color: #0097bd;">Group Totals</td>')
+                                    .append('<td style="color: #0097bd;">€ ' + grand_total_t + '</td>')
+                                    .append('<td colspan="4" style="color: #0097bd;">€ ' + paid_total + '</td>')
+                                    .append('<td/>');
+
+                            },
 
                         },
-                        endRender: function(rows, group) {
-                            var grand_total_t = rows
-                                .data()
-                                .pluck('grand_total')
-                                .reduce(function(a, b) {
-                                    if (b) {
-                                        b = b.replace(/[\€]/g, ''); // Remove currency symbol if present
-                                        //b = b.replace(/\./g, ''); // Remove thousands separators
-                                        b = b.replace(/\,/g, ''); // Replace decimal comma with dot
-                                        return a + parseFloat(b) || 0; // Convert to float and accumulate
-                                    }
-                                    return a;
-                                }, 0);
-                            grand_total_t = grand_total_t.toFixed(2);
-
-                            var paid_total = rows
-                                .data()
-                                .pluck('paid')
-                                .reduce(function(a, b) {
-                                    if (b) {
-                                        b = b.replace(/[\€]/g, ''); // Remove currency symbol if present
-                                        //b = b.replace(/\./g, ''); // Remove thousands separators
-                                        b = b.replace(/\,/g, ''); // Replace decimal comma with dot
-                                        return a + parseFloat(b) || 0; // Convert to float and accumulate
-                                    }
-                                    return a;
-                                }, 0);
-                            paid_total = paid_total.toFixed(2);
-
-                            return $('<tr/>')
-                                .append('<td colspan="2" style="color: #0097bd;">Group Totals</td>')
-                                .append('<td style="color: #0097bd;">€ ' + grand_total_t + '</td>')
-                                .append('<td colspan="4" style="color: #0097bd;">€ ' + paid_total + '</td>')
-                                .append('<td/>');
-
-                        },
-
-                    },
                     @endif
 
                     @if (Auth::guard('user')->user()->role_id == 2)
-                    
-                    footerCallback: function(row, data, start, end, display) {
-                        var api = this.api();
 
-                        // Function to parse and format values
-                        var intVal = function(i) {
-                            if (typeof i === 'string') {
-                                // Remove currency symbols and replace comma with dot
-                                i = i.replace(/[\€]/g, ''); // Remove currency symbol
-                                //i = i.replace(/\./g, ''); // Remove thousands separators (if periods are used)
-                                i = i.replace(/\,/g, ''); // Replace decimal comma with dot
-                            }
-                            return parseFloat(i) || 0; // Convert to float and handle non-numeric values
-                        };
+                        footerCallback: function(row, data, start, end, display) {
+                            var api = this.api();
 
-                        // Check the column indexes
-                        var grandTotalIndex = api.column(2).index();
-                        var paidIndex = api.column(3).index();
+                            // Function to parse and format values
+                            var intVal = function(i) {
+                                if (typeof i === 'string') {
+                                    // Remove currency symbols and replace comma with dot
+                                    i = i.replace(/[\€]/g, ''); // Remove currency symbol
+                                    //i = i.replace(/\./g, ''); // Remove thousands separators (if periods are used)
+                                    i = i.replace(/\,/g, ''); // Replace decimal comma with dot
+                                }
+                                return parseFloat(i) || 0; // Convert to float and handle non-numeric values
+                            };
 
-                        // Debug column indexes
-                        console.log('Grand Total Column Index:', grandTotalIndex);
-                        console.log('Paid Column Index:', paidIndex);
+                            // Check the column indexes
+                            var grandTotalIndex = api.column(2).index();
+                            var paidIndex = api.column(3).index();
 
-                        // Calculate page totals for 'grand_total'
-                        var pageTotal = api
-                            .column(grandTotalIndex, {
-                                page: 'current'
-                            })
-                            .data()
-                            .reduce(function(a, b) {
-                                return a + intVal(b);
-                            }, 0).toFixed(2);;
+                            // Debug column indexes
+                            console.log('Grand Total Column Index:', grandTotalIndex);
+                            console.log('Paid Column Index:', paidIndex);
 
-                        // Calculate page totals for 'paid'
-                        var pageTotal1 = api
-                            .column(paidIndex, {
-                                page: 'current'
-                            })
-                            .data()
-                            .reduce(function(a, b) {
-                                return a + intVal(b);
-                            }, 0).toFixed(2);
+                            // Calculate page totals for 'grand_total'
+                            var pageTotal = api
+                                .column(grandTotalIndex, {
+                                    page: 'current'
+                                })
+                                .data()
+                                .reduce(function(a, b) {
+                                    return a + intVal(b);
+                                }, 0).toFixed(2);;
 
-                        // Update footer
-                        $(api.column(grandTotalIndex).footer()).html('€ ' + pageTotal);
-                        $(api.column(paidIndex).footer()).html('€ ' + pageTotal1);
-                    },
+                            // Calculate page totals for 'paid'
+                            var pageTotal1 = api
+                                .column(paidIndex, {
+                                    page: 'current'
+                                })
+                                .data()
+                                .reduce(function(a, b) {
+                                    return a + intVal(b);
+                                }, 0).toFixed(2);
+
+                            // Update footer
+                            $(api.column(grandTotalIndex).footer()).html('€ ' + pageTotal);
+                            $(api.column(paidIndex).footer()).html('€ ' + pageTotal1);
+                        },
                     @endif
                 });
 

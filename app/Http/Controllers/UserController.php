@@ -1154,18 +1154,18 @@ class UserController extends Controller
             // Role-specific filtering and selection
             if ($user->can('create-new-quotation')) {
                 $new_invoices = new_quotations::query()
-                ->leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
-                ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
-                ->leftJoin(DB::raw('(
+                    ->leftJoin('customers_details', 'customers_details.id', '=', 'new_quotations.customer_details')
+                    ->leftJoin('quotes', 'quotes.id', '=', 'new_quotations.quote_request_id')
+                    ->leftJoin(DB::raw('(
                     SELECT quotation_id,
                            SUM(amount) AS total_paid
                     FROM payment_calculations
                     WHERE paid_by != "Pending"
                     GROUP BY quotation_id
                 ) as payment_summaries'), 'payment_summaries.quotation_id', '=', 'new_quotations.id')
-                ->whereIn('new_quotations.creator_id', $related_users)
-                ->where('new_quotations.status', '!=', 3)
-                ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname');
+                    ->whereIn('new_quotations.creator_id', $related_users)
+                    ->where('new_quotations.status', '!=', 3)
+                    ->select('new_quotations.id', 'new_quotations.quotation_invoice_number', 'new_quotations.quote_request_id', 'new_quotations.paid', 'new_quotations.grand_total', 'new_quotations.status', 'new_quotations.received', 'new_quotations.delivered', 'new_quotations.accepted', 'new_quotations.ask_customization', 'new_quotations.approved', 'new_quotations.admin_quotation_sent', 'new_quotations.draft', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.regards', 'new_quotations.invoice', 'new_quotations.delivery_date', 'new_quotations.retailer_delivered', 'new_quotations.id as invoice_id', 'new_quotations.created_at as invoice_date', 'customers_details.name', 'customers_details.family_name', 'quotes.quote_name', 'quotes.quote_familyname');
                 // ->orderBy('new_quotations.created_at', 'desc');
             } else {
                 $new_invoices = collect(); // Empty collection if no permission
@@ -1174,14 +1174,14 @@ class UserController extends Controller
         } else {
             // Handle the case for non-role 2 users
             $invoices = new_quotations::query()
-            ->leftjoin('new_orders', 'new_orders.quotation_id', '=', 'new_quotations.id')
-            ->leftJoin('organizations', 'organizations.id', '=', 'new_orders.supplier_id')
-            ->whereNull('new_orders.deleted_at')
-            ->where('new_orders.supplier_id', $organization_id)
-            ->where('new_quotations.finished', 1)
-            // ->orderBy('new_quotations.created_at', 'desc')
-            ->select('organizations.company_name', 'new_quotations.status', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.id as invoice_id', 'new_orders.order_sent', 'new_orders.id as data_id', 'new_quotations.created_at as invoice_date', 'new_orders.order_number', 'new_orders.approved as data_approved', 'new_orders.processing as data_processing', 'new_orders.delivered as data_delivered')
-            ->with('invoices', 'payment_calculations');
+                ->leftjoin('new_orders', 'new_orders.quotation_id', '=', 'new_quotations.id')
+                ->leftJoin('organizations', 'organizations.id', '=', 'new_orders.supplier_id')
+                ->whereNull('new_orders.deleted_at')
+                ->where('new_orders.supplier_id', $organization_id)
+                ->where('new_quotations.finished', 1)
+                // ->orderBy('new_quotations.created_at', 'desc')
+                ->select('organizations.company_name', 'new_quotations.status', 'new_quotations.processing', 'new_quotations.finished', 'new_quotations.id as invoice_id', 'new_orders.order_sent', 'new_orders.id as data_id', 'new_quotations.created_at as invoice_date', 'new_orders.order_number', 'new_orders.approved as data_approved', 'new_orders.processing as data_processing', 'new_orders.delivered as data_delivered')
+                ->with('invoices', 'payment_calculations');
         }
 
         // Apply filters
@@ -1206,21 +1206,18 @@ class UserController extends Controller
                 $keyword = '%' . $keyword . '%';
                 $invoices->where(function ($invoices) use ($keyword, $date_f, $user_role) {
 
-                    if ($user_role == 2)
-                    {
+                    if ($user_role == 2) {
                         $invoices = $invoices->where('quotes.quote_name', 'LIKE', $keyword)
-                        ->orWhere('quotes.quote_familyname', 'LIKE', $keyword)
-                        ->orWhere('customers_details.name', 'LIKE', $keyword)
-                        ->orWhere('customers_details.family_name', 'LIKE', $keyword)
-                        ->orWhere('new_quotations.quotation_invoice_number', 'LIKE', $keyword)
-                        ->orWhere('new_quotations.grand_total', 'LIKE', $keyword);
-                    }
-                    else
-                    {
+                            ->orWhere('quotes.quote_familyname', 'LIKE', $keyword)
+                            ->orWhere('customers_details.name', 'LIKE', $keyword)
+                            ->orWhere('customers_details.family_name', 'LIKE', $keyword)
+                            ->orWhere('new_quotations.quotation_invoice_number', 'LIKE', $keyword)
+                            ->orWhere('new_quotations.grand_total', 'LIKE', $keyword);
+                    } else {
                         $invoices = $invoices->where('new_orders.order_number', 'LIKE', $keyword)
-                        ->orWhere('new_quotations.company_name', 'LIKE', $keyword);
+                            ->orWhere('organizations.company_name', 'LIKE', $keyword);
                     }
-                    
+
                     $invoices = $invoices->orWhereDate('new_quotations.created_at', $date_f);
                 });
             }
@@ -1239,9 +1236,8 @@ class UserController extends Controller
                 }
             })
             ->addColumn('document_number', function ($key) use ($user) {
-                if($user->role_id == 4)
-                {
-                    return '<a href="">OR# '.$key->order_number.'</a>';
+                if ($user->role_id == 4) {
+                    return '<a href="">OR# ' . $key->order_number . '</a>';
                 }
                 return '
                         <div style="display: flex; align-items: center;" class="custom-control custom-checkbox mb-3">
@@ -1251,17 +1247,14 @@ class UserController extends Controller
                             <label style="margin: 0 0 0 5px; font-weight: 500;" class="custom-control-label" for="customCheck' . $key->id . '">OF# ' . $key->quotation_invoice_number . '</label>
                         </div>';
             })
-            ->addColumn('customer_name', function ($key) use($user) {
-                if($user->role_id == 2)
-                {
+            ->addColumn('customer_name', function ($key) use ($user) {
+                if ($user->role_id == 2) {
                     return $key->quote_request_id ? ($key->paid ? $key->quote_name . ' ' . $key->quote_familyname : 'vloerofferte.nl') : $key->name . ' ' . $key->family_name;
-                }
-                else
-                {
+                } else {
                     return $key->company_name;
                 }
             })
-            ->addColumn('grand_total', function ($key) use($user) {
+            ->addColumn('grand_total', function ($key) use ($user) {
                 if ($user->role_id != 2) return '';
                 return "€ " . number_format((float)$key->grand_total, 2);
             })
@@ -1411,8 +1404,7 @@ class UserController extends Controller
         $statusElement = "";
         $orderStatusElement = "";
 
-        if($user->role_id == 2)
-        {
+        if ($user->role_id == 2) {
             // Determine status element based on the quotation status
             switch ($key->status) {
                 case 3:
@@ -1531,16 +1523,15 @@ class UserController extends Controller
         $related_users = $organization->users()->withTrashed()->select('users.id')->pluck('id');
 
         $earliestYear = "";
-        
+
         if ($user_role == 2) {
             // Role-specific filtering and selection
             if ($user->can('create-new-quotation')) {
 
                 $earliestYear = new_quotations::whereIn('creator_id', $related_users)
-                ->where('new_quotations.status', '!=', 3)
-                ->selectRaw('YEAR(MIN(new_quotations.created_at)) as earliest_year')
-                ->value('earliest_year');
-
+                    ->where('new_quotations.status', '!=', 3)
+                    ->selectRaw('YEAR(MIN(new_quotations.created_at)) as earliest_year')
+                    ->value('earliest_year');
             } else {
                 $earliestYear = "";
             }
