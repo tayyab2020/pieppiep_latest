@@ -1,6 +1,8 @@
 @extends('layouts.handyman')
 @section('content')
     <script src="{{ asset('assets/front/js/spartan-multi-image-picker.js') }}"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet" type="text/css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.3.0/js/bootstrap-datepicker.js"></script>
     <div class="right-side">
         <div class="container-fluid">
@@ -1260,8 +1262,11 @@
         <script>
             $(document).ready(function() {
                 var screen_width = $(window).width();
-                var tableId = 'example';
+                var userColumnDefs = [];
+                var table_width = "";
+
                 var table;
+                var tableId = 'example';
                 @if (Auth::guard('user')->user()->role_id == 2)
                     var dateColumn = 5;
                 @else
@@ -1374,6 +1379,43 @@
                     ],
                     @if (Auth::guard('user')->user()->role_id == 2)
 
+                        initComplete: function (settings) {
+                    
+                            $('#' + tableId + '_wrapper thead th').resizable({
+                                handles: 'e',
+                                alsoResize: '#' + tableId + '_wrapper .dataTables_scrollHead table', //Not essential but makes the resizing smoother
+                                start: function (e) {
+                            
+                                    document.querySelectorAll('th').forEach(target => {
+                                        target.addEventListener("click", preventOrdering, true);
+                                    });
+
+                                    $('#' + tableId + '_wrapper .dataTables_scrollHead table').on('mouseup', preventOrdering);
+
+                                },
+                                stop: function(e, ui) {
+
+                                    document.querySelectorAll('th').forEach(target => {
+                                        target.removeEventListener("click", preventOrdering, true);
+                                    });
+
+                                    $('#' + tableId + '_wrapper .dataTables_scrollHead table').off('mouseup', preventOrdering);
+                        
+                                    var table_width = $('#' + tableId + '_wrapper .dataTables_scrollHead table').width();
+                                    $('#' + tableId + '_wrapper .dataTables_scrollBody table').width(table_width);
+                                    $('#' + tableId + '_wrapper .dataTables_scrollFoot table').width(table_width);
+                        
+                                    var index = $(this).index();
+                                    $(this).width(ui.size.width);
+                                    $('#' + tableId + '_wrapper .dataTables_scrollBody thead th').eq(index).width(ui.size.width);
+                                    $('#' + tableId + '_wrapper .dataTables_scrollFoot tfoot th').eq(index).width(ui.size.width);
+                                    saveColumnSettings();
+
+                                }
+                            });
+
+                        },
+
                         rowGroup: {
                             dataSrc: ['date1'],
                             startRender: function(rows, group) {
@@ -1420,10 +1462,6 @@
                             },
 
                         },
-                    @endif
-
-                    @if (Auth::guard('user')->user()->role_id == 2)
-
                         footerCallback: function(row, data, start, end, display) {
                             var api = this.api();
 
@@ -1470,8 +1508,129 @@
                             $(api.column(grandTotalIndex).footer()).html('€ ' + pageTotal);
                             $(api.column(paidIndex).footer()).html('€ ' + pageTotal1);
                         },
+                        
                     @endif
                 });
+
+                function preventOrdering(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                }
+
+                function getTableWidth()
+                {
+                    $.ajax({
+
+                        type: "GET",
+                        data: "screen_width=" + screen_width + '&table_id=quotations',
+                        url: "<?php echo route('get-table-widths'); ?>",
+
+                        success: function (data) {
+
+                            if(data)
+                            {
+                                userColumnDefs = JSON.parse(data.column_defs);
+                                table_width = data.table_width;
+                            }
+
+                            setUserColumnsDefWidths();
+
+                        },
+                        error: function (data) {
+
+                        }
+
+                    });
+                }
+
+                function setUserColumnsDefWidths() {
+
+                    // localStorage.clear();
+
+					// Get the settings for this table from localStorage
+					// var userColumnDefs = JSON.parse(localStorage.getItem("quotations_table")) || [];
+
+					if (userColumnDefs.length === 0) return;
+
+                    // var table_width = localStorage.getItem('quotations_table_width');
+
+					$('#' + tableId + '_wrapper .dataTables_scrollHead table thead tr').find("th").each( function ( target ) {
+
+                        // Check if there is a setting for this column in localStorage
+						existingSetting = userColumnDefs.findIndex( function(column) { return column.targets === target; } );
+                        
+                        if ( existingSetting !== -1 ) {
+
+                            var index = $(this).index();
+                            // Update the width
+                            $(this).width(userColumnDefs[existingSetting].width);
+                            $('#' + tableId + '_wrapper .dataTables_scrollBody thead th').eq(index).width(userColumnDefs[existingSetting].width);
+                            $('#' + tableId + '_wrapper .dataTables_scrollFoot tfoot th').eq(index).width(userColumnDefs[existingSetting].width);
+	
+						}
+
+					});
+
+                    $('#' + tableId + '_wrapper table').width(table_width);
+
+				}
+
+				function saveColumnSettings() {
+	
+					// var userColumnDefs = JSON.parse(localStorage.getItem("quotations_table")) || [];
+	
+					var width, header, existingSetting;
+
+					$('#' + tableId + '_wrapper .dataTables_scrollHead table thead tr').find("th").each( function ( targets ) {
+	
+						// Check if there is a setting for this column in localStorage
+						existingSetting = userColumnDefs.findIndex(function(column) { return column.targets === targets; });
+							
+                        table_width = $('#' + tableId + '_wrapper .dataTables_scrollHead table').width();
+
+						// Get the width of this column
+						width = $(this).width();
+	
+						if ( existingSetting !== -1 ) {
+	
+							// Update the width
+							userColumnDefs[existingSetting].width = width;
+	
+						} else {
+	
+							// Add the width for this column
+							userColumnDefs.push({
+								targets: targets,
+								width:  width,
+							});
+	
+						}
+	
+					});
+
+                    var token = $("#token").val();
+
+                    // Save (or update) the settings in database
+                    $.ajax({
+
+                        type: "POST",
+                        data: "table_width=" + table_width + "&column_defs=" + JSON.stringify(userColumnDefs) + "&screen_width=" + screen_width + '&table_id=quotations' + "&_token=" + token,
+                        url: "<?php echo route('update-table-widths'); ?>",
+
+                        success: function (data) {
+
+                        },
+                        error: function (data) {
+
+                        }
+
+                    });
+
+					// Save (or update) the settings in localStorage
+					localStorage.setItem('quotations_table_width', table_width);
+                    localStorage.setItem("quotations_table", JSON.stringify(userColumnDefs));
+				}
 
                 function filter(page_load = 0) {
                     // Custom filtering function which will search data in column five between two values
@@ -1521,6 +1680,10 @@
                         table.ajax.reload();
                     }
                 }
+
+                table.on('draw', function () {
+                    getTableWidth();
+                });
 
                 $('.dataTables_filter input').on('input', function() {
                     filter();
